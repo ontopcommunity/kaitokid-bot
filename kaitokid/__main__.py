@@ -22,6 +22,7 @@ from kaitokid import (
 from kaitokid.plugins import ALL_MODULES
 from kaitokid.vars import SUDO, USER_SESSION
 from utils import auto_clean
+from kaitokid.health_server import start_health_server
 
 LOGGER = getLogger("KaitoKid")
 # Run Bot
@@ -99,6 +100,11 @@ async def start_bot():
 
 if __name__ == "__main__":
     try:
+        # Render free web service must bind $PORT; serve health endpoint.
+        try:
+            start_health_server()
+        except Exception as e:
+            LOGGER.error(f"Failed to start health server: {str(e)}")
         get_event_loop().run_until_complete(start_bot())
     except KeyboardInterrupt:
         LOGGER.info("Bot stopped by user")
