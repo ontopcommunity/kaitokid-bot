@@ -56,7 +56,7 @@ async def start(self, ctx: Message, strings):
         nama = ctx.from_user.mention if ctx.from_user else ctx.sender_chat.title
         try:
             return await ctx.reply_photo(
-                photo="https://i.ibb.co/gZGkC4jy/B4-AF7-ED4-6-DD3-42-D0-AFB3-895-A67-CB7650.png",
+                photo="assets/avatar-bot.jpg",
                 caption=strings("start_msg").format(kamuh=nama),
                 reply_markup=keyboard,
             )
@@ -91,7 +91,7 @@ async def start(self, ctx: Message, strings):
     else:
         await self.send_photo(
             ctx.chat.id,
-            photo="https://i.ibb.co/gZGkC4jy/B4-AF7-ED4-6-DD3-42-D0-AFB3-895-A67-CB7650.png",
+            photo="assets/avatar-bot.jpg",
             caption=home_text_pm,
             reply_markup=home_keyboard_pm,
             reply_to_message_id=ctx.id,
