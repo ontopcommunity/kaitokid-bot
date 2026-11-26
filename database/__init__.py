@@ -3,9 +3,14 @@
 Single shared asyncpg pool, created lazily on first use (asyncpg needs a
 running event loop, so the pool cannot be built at import time). The DSN
 comes from DATABASE_URL (config.env / environment), falling back to the
-legacy DATABASE_URI variable. It points at the Supabase Postgres for this
-bot (direct host; the Supabase pooler tenant is not synced for this project
-yet, so the pooler URI is not used).
+legacy DATABASE_URI variable. On Render the bot uses the Render Postgres
+(internal connection string); the Supabase direct host is IPv6-only and
+Render free has no IPv6 egress, and the Supabase pooler tenant is not
+provisioned for this account, so Supabase cannot be reached from Render.
+
+Schema: on first pool creation, if the kk_* tables are missing, the DDL
+in sql/kaitokid_schema.sql is executed automatically (idempotent), so a
+fresh database bootstraps itself on first startup.
 
 Compatibility: `dbname` is kept as a small dict-like shim so code doing
 dbname["autoapprove"] keeps working (only autoapprove.py uses it). It
@@ -19,6 +24,32 @@ import os
 import asyncpg
 
 _pool: asyncpg.Pool | None = None
+_schema_ensured: bool = False
+
+
+async def _ensure_schema(pool: asyncpg.Pool) -> None:
+    """Create the kk_* tables on a fresh database (idempotent).
+
+    Reads sql/kaitokid_schema.sql (repo root) and executes it only when
+    the tables are missing, so a fresh Render Postgres bootstraps itself
+    on the bot's first startup. Runs once per process.
+    """
+    global _schema_ensured
+    if _schema_ensured:
+        return
+    _schema_ensured = True
+    async with pool.acquire() as conn:
+        n = await conn.fetchval(
+            "SELECT count(*) FROM information_schema.tables "
+            "WHERE table_schema='public' AND table_name LIKE 'kk_%'"
+        )
+        if n and n >= 20:
+            return
+        import pathlib
+
+        sql_path = pathlib.Path(__file__).resolve().parent.parent / "sql" / "kaitokid_schema.sql"
+        ddl = sql_path.read_text(encoding="utf-8")
+        await conn.execute(ddl)
 
 
 async def _init_conn(conn: asyncpg.Connection) -> None:
@@ -60,6 +91,7 @@ async def get_pool() -> asyncpg.Pool:
         _pool = await asyncpg.create_pool(
             _dsn(), min_size=1, max_size=10, timeout=30, init=_init_conn
         )
+        await _ensure_schema(_pool)
     return _pool
 
 
