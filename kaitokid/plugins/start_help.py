@@ -24,7 +24,7 @@ home_keyboard_pm = InlineKeyboardMarkup(
             InlineKeyboardButton(text="Các lệnh sử dụng ❓", callback_data="bot_commands"),
         ],
         [
-            InlineKeyboardButton(text="Liên hệ admin 👨", url="https://t.me/ontop2k9"),
+            InlineKeyboardButton(text="Liên hệ admin 👨", url="https://t.me/ontopdz2k9"),
         ],
         [
             InlineKeyboardButton(
@@ -43,7 +43,7 @@ keyboard = InlineKeyboardMarkup(
             InlineKeyboardButton(text="Các lệnh sử dụng ❓", url=f"t.me/{BOT_USERNAME}?start=help"),
         ],
         [
-            InlineKeyboardButton(text="Liên hệ admin 👨", url="https://t.me/ontop2k9"),
+            InlineKeyboardButton(text="Liên hệ admin 👨", url="https://t.me/ontopdz2k9"),
         ],
     ]
 )

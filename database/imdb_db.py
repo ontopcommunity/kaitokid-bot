@@ -1,20 +1,21 @@
-from database import dbname
-
-imbd_db = dbname["imdb"]
+from database import execute, fetchrow
 
 
 async def is_imdbset(user_id: int) -> bool:
-    user = await imbd_db.find_one({"user_id": user_id})
-    return (True, user["lang"]) if user else (False, {})
+    row = await fetchrow("SELECT lang FROM kk_imdb WHERE user_id = $1", user_id)
+    return (True, row["lang"]) if row else (False, {})
 
 
 async def add_imdbset(user_id: int, lang):
-    await imbd_db.update_one(
-        {"user_id": user_id}, {"$set": {"lang": lang}}, upsert=True
+    await execute(
+        "INSERT INTO kk_imdb (user_id, lang) VALUES ($1, $2) "
+        "ON CONFLICT (user_id) DO UPDATE SET lang = EXCLUDED.lang",
+        user_id,
+        lang,
     )
 
 
 async def remove_imdbset(user_id: int):
-    user = await imbd_db.find_one({"user_id": user_id})
-    if user:
-        return await imbd_db.delete_one({"user_id": user_id})
+    row = await fetchrow("SELECT user_id FROM kk_imdb WHERE user_id = $1", user_id)
+    if row:
+        await execute("DELETE FROM kk_imdb WHERE user_id = $1", user_id)

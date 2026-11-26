@@ -307,7 +307,7 @@ async def delete_after_delay(message: Message, seconds: int):
 async def msg_quotly_cmd(client: app, message: Message):
     """Handle /q and /r commands to generate quote stickers."""
     if message.chat.type != enums.ChatType.GROUP and message.chat.type != enums.ChatType.SUPERGROUP:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm ví dụ như @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm ví dụ như @chatcongnghelo để sử dụng.")
     processing_msg = await message.reply_text("Đang xử lý...")
     
     try:

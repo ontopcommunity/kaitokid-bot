@@ -303,7 +303,7 @@ async def convert_video(filename: str) -> str:
 @capture_err
 async def memify(_, message):
     if message.chat.type != enums.ChatType.GROUP and message.chat.type != enums.ChatType.SUPERGROUP:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm ví dụ như @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm ví dụ như @chatcongnghelo để sử dụng.")
     if not message.reply_to_message:
         await message.reply_msg(
             "Vui lòng trả lời một sticker, ảnh hoặc video. Sử dụng dấu ; để phân tách văn bản trên và dưới."

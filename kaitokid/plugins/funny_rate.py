@@ -35,7 +35,7 @@ MEDIA = {
 }
 
 # Nút hỗ trợ
-BUTTON = [[InlineKeyboardButton("Ủng Hộ", url="https://dabeecao.org#donate")]]
+BUTTON = [[InlineKeyboardButton("Ủng Hộ", url="https://t.me/sharecongngheontop")]]
 
 # Hàm chung để xử lý các lệnh
 async def handle_fun_command(ctx, command, caption_template, emoji):

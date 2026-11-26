@@ -1,8 +1,9 @@
 emoji
 pyrofork
 tgcrypto
-async_pymongo
-pymongo
+asyncpg
+sqlalchemy
+psycopg2-binary
 python-dotenv
 requests
 beautifulsoup4

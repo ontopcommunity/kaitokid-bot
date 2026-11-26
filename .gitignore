@@ -1,0 +1,10 @@
+# secrets / local
+.db_pass_tmp
+config.env
+
+# python
+__pycache__/
+*.pyc
+
+# os
+.DS_Store

@@ -32,7 +32,7 @@ LOGGER = getLogger("KaitoKid")
 
 __MODULE__ = "TínhNăngInline"
 __HELP__ = """
-<blockquote>Để sử dụng tính năng này, chỉ cần gõ tên bot (ví dụ: @caoteo_bot) kèm theo các tham số sau:
+<blockquote>Để sử dụng tính năng này, chỉ cần gõ tên bot (ví dụ: @kaitokidontopbot) kèm theo các tham số sau:
 /laythongtin [ID người dùng/tên người dùng] - Kiểm tra thông tin về một người dùng.
 /tinbaomat [nội_dung:] - Gửi tin nhắn bảo mật cho người khác, kết thúc bằng dấu "." để hoàn tất.
 /git [truy vấn] - Tìm kiếm và lấy thông tin project trên Github.</blockquote>

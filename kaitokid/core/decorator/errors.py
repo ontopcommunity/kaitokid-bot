@@ -37,7 +37,7 @@ def capture_err(func):
 
             cap_day = f"{day.strftime('%A')}, {tgl_now.strftime('%d %B %Y %H:%M:%S')}"
             await sender(
-                "😭 Đã xảy ra lỗi nội bộ trong khi xử lý Lệnh của bạn, Nhật ký đã được gửi đến @dabeecao. Xin lỗi vì sự bất tiện này..."
+                "😭 Đã xảy ra lỗi nội bộ trong khi xử lý Lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện này..."
             )
             with open(
                 f"crash_{tgl_now.strftime('%d %B %Y')}.txt", "w+", encoding="utf-8"

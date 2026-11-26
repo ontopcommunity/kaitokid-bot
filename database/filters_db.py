@@ -1,13 +1,11 @@
 from typing import Dict, List, Union
 
-from database import dbname
-
-filtersdb = dbname["filters"]
+from database import execute, fetchrow
 
 
 async def _get_filters(chat_id: int) -> Dict[str, int]:
-    _filters = await filtersdb.find_one({"chat_id": chat_id})
-    return _filters["filters"] if _filters else {}
+    row = await fetchrow("SELECT filters FROM kk_filters WHERE chat_id = $1", chat_id)
+    return dict(row["filters"]) if row else {}
 
 
 async def delete_filter(chat_id: int, name: str) -> bool:
@@ -15,17 +13,18 @@ async def delete_filter(chat_id: int, name: str) -> bool:
     name = name.lower().strip()
     if name in filtersd:
         del filtersd[name]
-        await filtersdb.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"filters": filtersd}},
-            upsert=True,
+        await execute(
+            "INSERT INTO kk_filters (chat_id, filters) VALUES ($1, $2) "
+            "ON CONFLICT (chat_id) DO UPDATE SET filters = EXCLUDED.filters",
+            chat_id,
+            filtersd,
         )
         return True
     return False
 
 
 async def deleteall_filters(chat_id: int):
-    return await filtersdb.delete_one({"chat_id": chat_id})
+    return await execute("DELETE FROM kk_filters WHERE chat_id = $1", chat_id)
 
 
 async def get_filter(chat_id: int, name: str) -> Union[bool, dict]:
@@ -42,8 +41,9 @@ async def save_filter(chat_id: int, name: str, _filter: dict):
     name = name.lower().strip()
     _filters = await _get_filters(chat_id)
     _filters[name] = _filter
-    await filtersdb.update_one(
-        {"chat_id": chat_id},
-        {"$set": {"filters": _filters}},
-        upsert=True,
+    await execute(
+        "INSERT INTO kk_filters (chat_id, filters) VALUES ($1, $2) "
+        "ON CONFLICT (chat_id) DO UPDATE SET filters = EXCLUDED.filters",
+        chat_id,
+        _filters,
     )

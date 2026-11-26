@@ -1,23 +1,22 @@
 from typing import Dict, Union
 
-from database import dbname
-
-warnsdb = dbname["warn"]
+from database import execute, fetch, fetchrow
 
 
 async def get_warns_count() -> dict:
     chats_count = 0
     warns_count = 0
-    async for chat in warnsdb.find({"chat_id": {"$lt": 0}}):
-        for user in chat["warns"]:
-            warns_count += chat["warns"][user]["warns"]
+    rows = await fetch("SELECT warns FROM kk_warns WHERE chat_id < 0")
+    for row in rows:
+        for user in (row["warns"] or {}):
+            warns_count += row["warns"][user]["warns"]
         chats_count += 1
     return {"chats_count": chats_count, "warns_count": warns_count}
 
 
 async def get_warns(chat_id: int) -> Dict[str, int]:
-    warns = await warnsdb.find_one({"chat_id": chat_id})
-    return warns["warns"] if warns else {}
+    row = await fetchrow("SELECT warns FROM kk_warns WHERE chat_id = $1", chat_id)
+    return dict(row["warns"]) if row else {}
 
 
 async def get_warn(chat_id: int, name: str) -> Union[bool, dict]:
@@ -32,8 +31,11 @@ async def add_warn(chat_id: int, name: str, warn: dict):
     warns = await get_warns(chat_id)
     warns[name] = warn
 
-    await warnsdb.update_one(
-        {"chat_id": chat_id}, {"$set": {"warns": warns}}, upsert=True
+    await execute(
+        "INSERT INTO kk_warns (chat_id, warns) VALUES ($1, $2) "
+        "ON CONFLICT (chat_id) DO UPDATE SET warns = EXCLUDED.warns",
+        chat_id,
+        warns,
     )
 
 
@@ -42,10 +44,11 @@ async def remove_warns(chat_id: int, name: str) -> bool:
     name = name.lower().strip()
     if name in warnsd:
         del warnsd[name]
-        await warnsdb.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"warns": warnsd}},
-            upsert=True,
+        await execute(
+            "INSERT INTO kk_warns (chat_id, warns) VALUES ($1, $2) "
+            "ON CONFLICT (chat_id) DO UPDATE SET warns = EXCLUDED.warns",
+            chat_id,
+            warnsd,
         )
         return True
     return False

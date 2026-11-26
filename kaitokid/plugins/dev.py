@@ -211,7 +211,7 @@ async def donate(self: Client, ctx: Message):
         await self.send_photo(
             ctx.chat.id,
             "https://api.dabeecao.org/data/tin-toi-di.jpg",
-            caption="Xin chào, Nếu bạn thấy bot này hữu ích, bạn có thể quyên góp vào tài khoản bên dưới. Bởi vì bot này chạy trên server không miễn phí. Cảm ơn.\n\n<b>Các phương thức ủng hộ:</b>\n<b>Momo:</b> https://me.momo.vn/lDIjiWsjuDtos8TNi3IJ (Cao Duy Anh)\n<b>Ngân hàng Vietinbank, MBBank, OCB:</b> 0869261804 (Cao Duy Anh)\n\nHoặc ủng hộ qua Paypal tại địa chỉ:\nhttps://paypal.me/dabeecao",
+            caption="Xin chào, Nếu bạn thấy bot này hữu ích, bạn có thể quyên góp vào tài khoản bên dưới. Bởi vì bot này chạy trên server không miễn phí. Cảm ơn.\n\n<b>Các phương thức ủng hộ:</b>\n<b>Ngân hàng MBBank:</b> VQRQABVBL4288 (CAO NHAT MINH)\n\nLiên hệ / hỗ trợ: https://t.me/sharecongngheontop",
             reply_to_message_id=ctx.id,
             message_effect_id=5159385139981059251
             if ctx.chat.type.value == "private"
@@ -626,7 +626,7 @@ async def update_restart(_, ctx: Message, strings):
     os.execvp(sys.executable, [sys.executable, "-m", "kaitokid"])
 
 
-@app.on_poll(filters.chat(-1001777794636), group=-5)
+@app.on_poll(filters.chat(-1005709128483), group=-5)
 async def tespoll(self, msg):
     await ctx.reply(msg)
 

@@ -1,38 +1,47 @@
-from database import dbname
+from database import execute, fetchrow
 
-report_link_db = dbname["report_links"]
 
 # Kiểm tra xem chức năng báo cáo link có được bật trong nhóm không
 async def is_report_link_enabled(chat_id: int) -> bool:
-    data = await report_link_db.find_one({"chat_id": chat_id})
-    return bool(data and data.get("report_link_enabled", False))
+    row = await fetchrow(
+        "SELECT report_link_enabled FROM kk_report_links WHERE chat_id = $1", chat_id
+    )
+    return bool(row and row["report_link_enabled"])
+
 
 # Bật/tắt chức năng báo cáo link
 async def toggle_report_link(chat_id: int):
-    data = await report_link_db.find_one({"chat_id": chat_id})
-    if data and data.get("report_link_enabled", False):
-        await report_link_db.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"report_link_enabled": False}}
+    row = await fetchrow(
+        "SELECT report_link_enabled FROM kk_report_links WHERE chat_id = $1", chat_id
+    )
+    if row and row["report_link_enabled"]:
+        await execute(
+            "UPDATE kk_report_links SET report_link_enabled = FALSE WHERE chat_id = $1",
+            chat_id,
         )
         return False
     else:
-        await report_link_db.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"report_link_enabled": True}},
-            upsert=True
+        await execute(
+            "INSERT INTO kk_report_links (chat_id, report_link_enabled) VALUES ($1, TRUE) "
+            "ON CONFLICT (chat_id) DO UPDATE SET report_link_enabled = TRUE",
+            chat_id,
         )
         return True
 
+
 # Lưu danh sách link loại trừ (whitelist)
 async def set_excluded_links(chat_id: int, links: list):
-    await report_link_db.update_one(
-        {"chat_id": chat_id},
-        {"$set": {"excluded_links": links}},
-        upsert=True
+    await execute(
+        "INSERT INTO kk_report_links (chat_id, excluded_links) VALUES ($1, $2) "
+        "ON CONFLICT (chat_id) DO UPDATE SET excluded_links = EXCLUDED.excluded_links",
+        chat_id,
+        links,
     )
+
 
 # Lấy danh sách link loại trừ
 async def get_excluded_links(chat_id: int) -> list:
-    data = await report_link_db.find_one({"chat_id": chat_id})
-    return data.get("excluded_links", []) if data else []
+    row = await fetchrow(
+        "SELECT excluded_links FROM kk_report_links WHERE chat_id = $1", chat_id
+    )
+    return list(row["excluded_links"]) if row else []

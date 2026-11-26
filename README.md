@@ -1,16 +1,16 @@
 # 👨‍🔬 KaitoKid
 
-Chào mừng bạn đến với **KaitoKid** – một bot Telegram mạnh mẽ và linh hoạt được thiết kế để quản lý nhóm hiệu quả, mang lại trải nghiệm tương tác thú vị và tiện lợi cho cộng đồng của bạn. Được xây dựng trên nền tảng Python 3, Pyrogram và MongoDB, KaitoKid Bot cung cấp khả năng tùy biến cao và hiệu suất đáng tin cậy.
+Chào mừng bạn đến với **KaitoKid** – một bot Telegram mạnh mẽ và linh hoạt được thiết kế để quản lý nhóm hiệu quả, mang lại trải nghiệm tương tác thú vị và tiện lợi cho cộng đồng của bạn. Được xây dựng trên nền tảng Python 3, Pyrogram và PostgreSQL (Supabase), KaitoKid Bot cung cấp khả năng tùy biến cao và hiệu suất đáng tin cậy.
 
 ## 🚀 Tính năng chính
 
   * **Quản lý nhóm toàn diện:** Các lệnh quản trị nhóm cơ bản đến nâng cao.
   * **Tương tác thông minh:** Tùy chỉnh các phản hồi và tương tác của bot.
-  * **Tích hợp cơ sở dữ liệu:** Lưu trữ và quản lý dữ liệu người dùng, nhóm một cách bền vững với MongoDB.
+  * **Tích hợp cơ sở dữ liệu:** Lưu trữ và quản lý dữ liệu người dùng, nhóm một cách bền vững với PostgreSQL.
   * **Vô vàn chức năng khác:** Nhiều chức năng đặc biệt được tạo ra với nhiều mục đích khác nhau.
   * **Mở rộng dễ dàng:** Kiến trúc mô-đun cho phép bạn dễ dàng thêm các tính năng mới.
 
-Bot đã dừng phát triển, các lỗi sẽ không được hỗ trợ vui lòng tự kiểm tra và sửa chữa nếu bạn muốn sử dụng.
+Bot được hồi sinh từ Ruby Chan (Tiến sĩ Tèo) và chuyển sang dùng PostgreSQL thay cho MongoDB. Schema ở `sql/kaitokid_schema.sql`.
 
 -----
 
@@ -76,7 +76,7 @@ KaitoKid Bot sử dụng các biến môi trường để cấu hình. Bạn c�
     # BOT_TOKEN: Token của Bot bạn tạo từ BotFather
     BOT_TOKEN=
 
-    # DATABASE_URI: Chuỗi kết nối MongoDB (ví dụ: mongodb+srv://user:pass@cluster.mongodb.net/dbname)
+    # DATABASE_URI: Chuỗi kết nối PostgreSQL (ví dụ: postgresql://user:pass@host:5432/postgres)
     DATABASE_URI=
 
     # LOG_CHANNEL: ID của kênh hoặc nhóm dùng để gửi log và thông báo của bot (ví dụ: -1001234567890)
@@ -85,9 +85,6 @@ KaitoKid Bot sử dụng các biến môi trường để cấu hình. Bạn c�
     # ==================== Optional Vars ====================
     # SUDO: ID người dùng của các tài khoản Sudo (admin bot), cách nhau bằng dấu cách (ví dụ: 123456789 987654321)
     SUDO=
-
-    # DATABASE_NAME: Tên cơ sở dữ liệu MongoDB (mặc định là 'kaitokid_db')
-    DATABASE_NAME=
 
     # SUPPORT_CHAT: Username của nhóm hỗ trợ bot (ví dụ: YourSupportChat)
     SUPPORT_CHAT=
@@ -106,7 +103,7 @@ KaitoKid Bot sử dụng các biến môi trường để cấu hình. Bạn c�
 
       * **`API_HASH`** và **`API_ID`**: Bạn có thể lấy chúng từ [my.telegram.org](https://my.telegram.org/).
       * **`BOT_TOKEN`**: Tạo bot mới hoặc lấy token của bot hiện có từ [@BotFather](https://t.me/BotFather).
-      * **`DATABASE_URI`**: Để có chuỗi này, bạn cần có một cơ sở dữ liệu MongoDB. Bạn có thể sử dụng các dịch vụ cloud như [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) hoặc tự cài đặt MongoDB trên máy chủ của mình.
+      * **`DATABASE_URI`**: Để có chuỗi này, bạn cần có một cơ sở dữ liệu PostgreSQL. Bạn có thể sử dụng các dịch vụ cloud như [Supabase](https://supabase.com/) (miễn phí) hoặc tự cài đặt PostgreSQL trên máy chủ của mình. Schema tạo bảng nằm ở `sql/kaitokid_schema.sql`.
       * **`LOG_CHANNEL`**: Đây là ID số của kênh hoặc nhóm. Đảm bảo bot của bạn là quản trị viên trong kênh/nhóm đó để có thể gửi tin nhắn.
 
 -----

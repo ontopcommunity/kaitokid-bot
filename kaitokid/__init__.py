@@ -5,17 +5,14 @@ from faulthandler import enable as faulthandler_enable
 from logging import ERROR, INFO, StreamHandler, basicConfig, getLogger, handlers
 
 import uvloop
-from apscheduler.jobstores.mongodb import MongoDBJobStore
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from async_pymongo import AsyncClient
-from pymongo import MongoClient
 from pyrogram import Client
 
 from kaitokid.vars import (
     API_HASH,
     API_ID,
     BOT_TOKEN,
-    DATABASE_NAME,
     DATABASE_URI,
     TZ,
     USER_SESSION,
@@ -46,34 +43,29 @@ uvloop.install()
 faulthandler_enable()
 from kaitokid.core import kaitokid_patch
 
-# Pyrogram Bot Client
+# Pyrogram Bot Client (no MongoDB peer storage; peers are resolved in-memory)
 app = Client(
     "KaitoKidBot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    mongodb=dict(connection=AsyncClient(DATABASE_URI), remove_peers=True),
     sleep_threshold=180,
     app_version="3.0",
     workers=50,
     max_concurrent_transmissions=4
 )
-app.db = AsyncClient(DATABASE_URI)
 app.log = getLogger("KaitoKid")
 
 # Pyrogram UserBot Client
 user = Client(
     "KaitoKidUbot",
     session_string=USER_SESSION,
-    mongodb=dict(connection=AsyncClient(DATABASE_URI), remove_peers=False),
     sleep_threshold=180,
     app_version="1.0"
 )
 
 jobstores = {
-    "default": MongoDBJobStore(
-        client=MongoClient(DATABASE_URI), database=DATABASE_NAME, collection="nightmode"
-    )
+    "default": SQLAlchemyJobStore(url=DATABASE_URI)
 }
 scheduler = AsyncIOScheduler(jobstores=jobstores, timezone=TZ)
 

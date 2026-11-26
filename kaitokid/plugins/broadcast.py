@@ -4,11 +4,11 @@ import time
 import logging
 from logging import getLogger
 
-from async_pymongo import AsyncClient
 from pyrogram import filters
 from pyrogram.types import Message
 
-from kaitokid import DATABASE_URI, app
+from database.users_chats_db import peers_db
+from kaitokid import app
 from kaitokid.vars import SUDO
 from utils import broadcast_messages
 
@@ -16,20 +16,19 @@ LOGGER = getLogger("KaitoKid")
 
 @app.on_message(filters.command("broadcast") & filters.user(SUDO) & filters.reply)
 async def broadcast(_, ctx: Message):
-    mongo = AsyncClient(DATABASE_URI)
-    userdb = mongo["KaitoKidBot"]["peers"]
+    peers = await peers_db.get_all_peers()
     b_msg = ctx.reply_to_message
     sts = await ctx.reply_msg("Broadcasting your messages...")
     start_time = time.time()
-    total_users = await userdb.count_documents({})
+    total_users = len(peers)
     done = 0
     blocked = 0
     deleted = 0
     failed = 0
 
     success = 0
-    async for chat in userdb.find({"type": "user"}):
-        if chat["type"] != "user":
+    async for chat in peers:
+        if chat.get("type") != "user":
             continue
         pti, sh = await broadcast_messages(int(chat["_id"]), b_msg)
         if pti:

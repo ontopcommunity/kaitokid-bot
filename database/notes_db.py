@@ -1,13 +1,11 @@
 from typing import Dict, List, Union
 
-from database import dbname
-
-notesdb = dbname["notes"]
+from database import execute, fetchrow
 
 
 async def _get_notes(chat_id: int) -> Dict[str, int]:
-    _notes = await notesdb.find_one({"chat_id": chat_id})
-    return _notes["notes"] if _notes else {}
+    row = await fetchrow("SELECT notes FROM kk_notes WHERE chat_id = $1", chat_id)
+    return dict(row["notes"]) if row else {}
 
 
 async def delete_note(chat_id: int, name: str) -> bool:
@@ -15,10 +13,11 @@ async def delete_note(chat_id: int, name: str) -> bool:
     name = name.lower().strip()
     if name in notesd:
         del notesd[name]
-        await notesdb.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"notes": notesd}},
-            upsert=True,
+        await execute(
+            "INSERT INTO kk_notes (chat_id, notes) VALUES ($1, $2) "
+            "ON CONFLICT (chat_id) DO UPDATE SET notes = EXCLUDED.notes",
+            chat_id,
+            notesd,
         )
         return True
     return False
@@ -39,10 +38,13 @@ async def save_note(chat_id: int, name: str, note: dict):
     _notes = await _get_notes(chat_id)
     _notes[name] = note
 
-    await notesdb.update_one(
-        {"chat_id": chat_id}, {"$set": {"notes": _notes}}, upsert=True
+    await execute(
+        "INSERT INTO kk_notes (chat_id, notes) VALUES ($1, $2) "
+        "ON CONFLICT (chat_id) DO UPDATE SET notes = EXCLUDED.notes",
+        chat_id,
+        _notes,
     )
 
 
 async def deleteall_notes(chat_id: int):
-    return await notesdb.delete_one({"chat_id": chat_id})
+    return await execute("DELETE FROM kk_notes WHERE chat_id = $1", chat_id)

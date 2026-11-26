@@ -25,7 +25,7 @@ async def ping(_, ctx: Message):
     
     # Define contact button
     contact_button = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Liên hệ tác giả", url="t.me/dabeecao")]]
+        [[InlineKeyboardButton("Liên hệ tác giả", url="t.me/ontopdz2k9")]]
     )
     
     rm = await ctx.reply_msg(
@@ -38,7 +38,7 @@ async def ping(_, ctx: Message):
     
     # Update message with ping results
     await rm.edit_msg(
-        f"<b>KaitoKid {kaitokid_version} bởi @ontop2k9 dựa trên Pyrogram {pyrover}.</b>\n\n"
+        f"<b>KaitoKid {kaitokid_version} bởi @ontopdz2k9 dựa trên Pyrogram {pyrover}.</b>\n\n"
         f"<b>Thời gian phản hồi:</b> <code>{time_taken_s} ms</code>\n"
         f"<b>Thời gian Uptime:</b> <code>{currentTime}</code>\n"
         f"<b>Mọi thắc mắc và hợp tác vui lòng liên hệ tác giả</b>",
@@ -49,7 +49,7 @@ async def ping(_, ctx: Message):
 async def ping_handler(_, ctx: Message):
     # Define contact button
     contact_button = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Liên hệ tác giả", url="t.me/dabeecao")]]
+        [[InlineKeyboardButton("Liên hệ tác giả", url="t.me/ontopdz2k9")]]
     )
     
     m = await ctx.reply_msg(

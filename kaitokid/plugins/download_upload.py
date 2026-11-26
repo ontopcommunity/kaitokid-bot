@@ -48,7 +48,7 @@ TIMEOUT_MINUTES = 60  # Thời gian hết hạn là 60 phút
 @app.on_message(filters.command(["getdirect"], COMMAND_HANDLER))
 async def upload(bot, message):
     if message.chat.type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.")
     
     if not message.reply_to_message:
         return await message.reply("Vui lòng trả lời tập tin phương tiện.")
@@ -149,7 +149,7 @@ def generate_random_filename(extension=".ipa"):
 async def upload(bot, message):
     # Kiểm tra nếu tin nhắn không phải là trong nhóm
     if message.chat.type != enums.ChatType.GROUP and message.chat.type != enums.ChatType.SUPERGROUP:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.")
     
     if not message.reply_to_message:
         return await message.reply("Vui lòng trả lời tập tin .ipa hoặc .tipa bằng lệnh")
@@ -216,7 +216,7 @@ async def upload(bot, message):
         # Kiểm tra xem có lỗi không
         if result.returncode != 0:
             # Có lỗi xảy ra, thông báo người dùng liên hệ để báo lỗi
-            await m.edit(f"Đã xảy ra lỗi khi ký tệp. Vui lòng liên hệ @dabeecao để báo lỗi.")
+            await m.edit(f"Đã xảy ra lỗi khi ký tệp. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
             return
         
         # Gửi thông báo ký thành công
@@ -255,7 +255,7 @@ async def upload(bot, message):
                                     InlineKeyboardButton("📥 qua OTA", url=install_url),
                                 ],
                                 [
-                                    InlineKeyboardButton("Ủng hộ KaitoKid", url="https://dabeecao.org#donate")
+                                    InlineKeyboardButton("Ủng hộ KaitoKid", url="https://t.me/sharecongngheontop")
                                 ]
                             ]
                         )
@@ -270,12 +270,12 @@ async def upload(bot, message):
                         # Xóa tin nhắn sau 60 phút
                         await auto_delete_message(m, TIMEOUT_MINUTES * 60)  # 60 phút
                     else:
-                        await m.edit(f"Đã xảy ra lỗi khi tải lên file. Vui lòng thử lại sau hoặc báo lỗi cho @dabeecao")
+                        await m.edit(f"Đã xảy ra lỗi khi tải lên file. Vui lòng thử lại sau hoặc báo lỗi cho @ontopdz2k9")
     except subprocess.CalledProcessError:
         # Xử lý lỗi khi chạy lệnh zsign
-        await m.edit("Đã xảy ra lỗi khi ký tệp. Vui lòng liên hệ @dabeecao để báo lỗi.")
+        await m.edit("Đã xảy ra lỗi khi ký tệp. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
     except Exception as e:
-        await bot.send_message(message.chat.id, text="Đã xảy ra lỗi! Vui lòng liên hệ @dabeecao để báo lỗi.")
+        await bot.send_message(message.chat.id, text="Đã xảy ra lỗi! Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
     finally:
         # Xóa các file tạm trong trường hợp có lỗi xảy ra
         if os.path.exists(original_file_path):
@@ -287,7 +287,7 @@ async def upload(bot, message):
 async def upload(bot, message):
     # Kiểm tra nếu tin nhắn không phải là trong nhóm
     if message.chat.type != enums.ChatType.GROUP and message.chat.type != enums.ChatType.SUPERGROUP:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.")
     
     if not message.reply_to_message:
         return await message.reply("Vui lòng trả lời tập tin .ipa hoặc .tipa bằng lệnh.")
@@ -348,7 +348,7 @@ async def upload(bot, message):
         # Kiểm tra xem có lỗi không
         if result.returncode != 0:
             # Có lỗi xảy ra, thông báo người dùng liên hệ để báo lỗi
-            await m.edit(f"Đã xảy ra lỗi khi nhân bản. Vui lòng liên hệ @dabeecao để báo lỗi.")
+            await m.edit(f"Đã xảy ra lỗi khi nhân bản. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
             return
         
         # Gửi thông báo ký thành công
@@ -367,9 +367,9 @@ async def upload(bot, message):
 
     except subprocess.CalledProcessError:
         # Xử lý lỗi khi chạy lệnh zsign
-        await m.edit("Đã xảy ra lỗi khi nhân bản. Vui lòng liên hệ @dabeecao để báo lỗi.")
+        await m.edit("Đã xảy ra lỗi khi nhân bản. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
     except Exception as e:
-        await bot.send_message(message.chat.id, text="Đã xảy ra lỗi! Vui lòng liên hệ @dabeecao để báo lỗi.")
+        await bot.send_message(message.chat.id, text="Đã xảy ra lỗi! Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
     finally:
         # Xóa các file tạm trong trường hợp có lỗi xảy ra
         if os.path.exists(original_file_path):
@@ -381,7 +381,7 @@ async def upload(bot, message):
 async def upload(bot, message):
     # Kiểm tra nếu tin nhắn không phải là trong nhóm
     if message.chat.type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.")
 
     # Kiểm tra nếu người dùng trả lời tin nhắn có file đính kèm
     if not message.reply_to_message or not message.reply_to_message.document:
@@ -446,7 +446,7 @@ async def upload(bot, message):
             )
 
             if result.returncode != 0:
-                await m.edit(f"Đã xảy ra lỗi khi tiêm {iap_path}. Vui lòng liên hệ @dabeecao để báo lỗi.")
+                await m.edit(f"Đã xảy ra lỗi khi tiêm {iap_path}. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
                 return
 
             intermediate_file_path = temp_output_path  # Cập nhật file IPA tạm thời mới cho lần tiếp theo
@@ -466,7 +466,7 @@ async def upload(bot, message):
         await m.delete()
 
     except Exception as e:
-        await m.edit(f"Đã xảy ra lỗi khi tiêm. Vui lòng liên hệ @dabeecao để báo lỗi.\nChi tiết lỗi: {str(e)}")
+        await m.edit(f"Đã xảy ra lỗi khi tiêm. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.\nChi tiết lỗi: {str(e)}")
     finally:
         # Xóa các file tạm trong trường hợp có lỗi xảy ra
         for path in [original_file_path, output_file_path] + temp_files:
@@ -477,7 +477,7 @@ async def upload(bot, message):
 async def upload(bot, message):
     # Kiểm tra nếu tin nhắn không phải là trong nhóm
     if message.chat.type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.")
 
     # Kiểm tra nếu người dùng trả lời tin nhắn có file đính kèm
     if not message.reply_to_message or not message.reply_to_message.document:
@@ -543,7 +543,7 @@ async def upload(bot, message):
             )
 
             if result.returncode != 0:
-                await m.edit(f"Đã xảy ra lỗi khi tiêm {fix_path}. Vui lòng liên hệ @dabeecao để báo lỗi.")
+                await m.edit(f"Đã xảy ra lỗi khi tiêm {fix_path}. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.")
                 return
 
             intermediate_file_path = temp_output_path  # Cập nhật file IPA tạm thời mới cho lần tiếp theo
@@ -563,7 +563,7 @@ async def upload(bot, message):
         await m.delete()
 
     except Exception as e:
-        await m.edit(f"Đã xảy ra lỗi khi tiêm. Vui lòng liên hệ @dabeecao để báo lỗi.\nChi tiết lỗi: {str(e)}")
+        await m.edit(f"Đã xảy ra lỗi khi tiêm. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.\nChi tiết lỗi: {str(e)}")
     finally:
         # Xóa các file tạm trong trường hợp có lỗi xảy ra
         for path in [original_file_path, output_file_path] + temp_files:
@@ -575,7 +575,7 @@ async def upload(bot, message):
 async def upload(bot, message):
     # Kiểm tra nếu tin nhắn không phải là trong nhóm
     if message.chat.type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.")
+        return await message.reply("Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.")
 
     # Kiểm tra nếu người dùng trả lời tin nhắn có file đính kèm
     if not message.reply_to_message or not message.reply_to_message.document:
@@ -650,7 +650,7 @@ async def upload(bot, message):
         await m.delete()
 
     except Exception as e:
-        await m.edit(f"Đã xảy ra lỗi khi tiêm. Vui lòng liên hệ @dabeecao để báo lỗi.\nChi tiết lỗi: {str(e)}")
+        await m.edit(f"Đã xảy ra lỗi khi tiêm. Vui lòng liên hệ @ontopdz2k9 để báo lỗi.\nChi tiết lỗi: {str(e)}")
     finally:
         # Xóa các file tạm
         for path in [original_file_path, output_file_path]:

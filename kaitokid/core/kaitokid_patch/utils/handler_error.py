@@ -62,11 +62,11 @@ async def handle_error(
             try:
                 await m.reply_photo(
                     "https://api.dabeecao.org/deo_thanh_cong.jpg",
-                    caption="Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @dabeecao. Xin lỗi vì sự bất tiện",
+                    caption="Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện",
                 )
             except:
                 await m.reply_msg(
-                    "Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @dabeecao. Xin lỗi vì sự bất tiện"
+                    "Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện"
                 )
             await m._client.send_document(
                 LOG_CHANNEL,
@@ -79,11 +79,11 @@ async def handle_error(
             try:
                 await m.reply_photo(
                     "https://api.dabeecao.org/deo_thanh_cong.jpg",
-                    caption="Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @dabeecao. Xin lỗi vì sự bất tiện",
+                    caption="Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện",
                 )
             except:
                 await m.message.reply_msg(
-                    "Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @dabeecao. Xin lỗi vì sự bất tiện"
+                    "Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện"
                 )
             await m.message._client.send_document(
                 LOG_CHANNEL,

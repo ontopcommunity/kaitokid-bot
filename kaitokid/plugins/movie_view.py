@@ -32,7 +32,7 @@ async def movie_search_handler(_, message: Message):
     # Kiểm tra nếu lệnh không được sử dụng trong nhóm
     if message.chat.type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         return await message.reply_msg(
-            "Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @thuthuatjb_sp để sử dụng.",
+            "Lệnh này chỉ hỗ trợ trong nhóm. Hãy tham gia nhóm @chatcongnghelo để sử dụng.",
             quote=True,
             del_in=5
         )

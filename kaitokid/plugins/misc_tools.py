@@ -430,7 +430,7 @@ async def thuid_command(client: Client, message: Message):
 async def create_buttons(c: Client, m: Message):
     suggestion_text = (
         "Vui lòng cung cấp nội dung và ít nhất một nút.\n\n"
-        "<code>/taonut *Xin* _chào_ {anh em}[https://dabeecao.org] (Về tôi)[https://dabeecao.org]</code>\n\n"
+        "<code>/taonut *Xin* _chào_ {anh em}[https://t.me/sharecongngheontop] (Về tôi)[https://t.me/sharecongngheontop]</code>\n\n"
         "Định dạng: <code>*đậm*, _nghiêng_, __gạch dưới__, `mã`, {text}[url] cho link</code>"
     )
     
