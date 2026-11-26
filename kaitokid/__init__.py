@@ -64,8 +64,13 @@ user = Client(
     app_version="1.0"
 )
 
+# SQLAlchemy defaults postgresql:// to the psycopg (v3) driver, but only
+# psycopg2-binary is installed. Force the psycopg2 dialect for the
+# scheduler jobstore (asyncpg still uses the plain postgresql:// URL).
 jobstores = {
-    "default": SQLAlchemyJobStore(url=DATABASE_URI)
+    "default": SQLAlchemyJobStore(
+        url=DATABASE_URI.replace("postgresql://", "postgresql+psycopg2://", 1)
+    )
 }
 scheduler = AsyncIOScheduler(jobstores=jobstores, timezone=TZ)
 
