@@ -3,10 +3,10 @@
 Single shared asyncpg pool, created lazily on first use (asyncpg needs a
 running event loop, so the pool cannot be built at import time). The DSN
 comes from DATABASE_URL (config.env / environment), falling back to the
-legacy DATABASE_URI variable. On Render the bot uses the Render Postgres
-(internal connection string); the Supabase direct host is IPv6-only and
-Render free has no IPv6 egress, and the Supabase pooler tenant is not
-provisioned for this account, so Supabase cannot be reached from Render.
+legacy DATABASE_URI variable. It points at the Supabase Postgres for this
+bot via the aws-1 pooler (aws-1-ap-southeast-1.pooler.supabase.com:5432,
+session mode; the aws-0 pooler has no tenant for this project, and the
+direct host is IPv6-only which Render free cannot reach).
 
 Schema: on first pool creation, if the kk_* tables are missing, the DDL
 in sql/kaitokid_schema.sql is executed automatically (idempotent), so a
