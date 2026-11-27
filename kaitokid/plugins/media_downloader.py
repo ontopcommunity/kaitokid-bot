@@ -106,6 +106,10 @@ def _fmt_num(n):
         n = int(n)
     except (TypeError, ValueError):
         return "0"
+    # API TikTok trả heart dạng int32 có dấu -> số lượt thích >2,1 tỷ tràn thành số âm.
+    # Đổi sang unsigned 32-bit để ra số đúng (vd: -495029812 -> 3,8 tỷ).
+    if n < 0:
+        n += 2 ** 32
     if n >= 1_000_000_000:
         return f"{n / 1_000_000_000:.1f}B".replace(".", ",")
     if n >= 1_000_000:
@@ -224,10 +228,12 @@ async def _handle_soundcloud(msg: Message, url: str):
 
         title = author = permalink = thumb = None
         duration = ""
+        duration_sec = 0
         if data:
             title = data.get("title") or "Untitled"
             author = data.get("author") or "Unknown artist"
             duration = _fmt_duration(data.get("duration") or 0)
+            duration_sec = int(data.get("duration") or 0) // 1000
             permalink = data.get("permalink_url") or url
             thumb = data.get("thumbnail") or ""
 
@@ -250,6 +256,7 @@ async def _handle_soundcloud(msg: Message, url: str):
             title = info.get("title") or "Untitled"
             author = info.get("uploader") or info.get("artist") or "Unknown artist"
             duration = _fmt_duration(info.get("duration") or 0)
+            duration_sec = int(info.get("duration") or 0)
             permalink = info.get("webpage_url") or url
             thumb = info.get("thumbnail") or ""
         if not data and not info:
@@ -285,6 +292,7 @@ async def _handle_soundcloud(msg: Message, url: str):
                 parse_mode=enums.ParseMode.HTML,
                 title=title,
                 performer=author,
+                duration=duration_sec or None,
                 thumb=str(thumb_path) if thumb_path else None,
                 reply_markup=kb,
                 quote=True,
@@ -503,10 +511,21 @@ async def _handle_generic_video(msg: Message, url: str):
         await status.delete()
     except Exception as e:
         LOGGER.exception("Generic video handler error")
-        try:
-            await status.edit_text(
+        err = str(e)
+        # YouTube chặn tải từ máy chủ (đòi đăng nhập xác minh không phải bot).
+        if ("youtube.com" in url or "youtu.be" in url) and (
+            "bot" in err.lower() or "sign in" in err.lower()
+        ):
+            err_msg = (
+                "❌ YouTube chặn tải video từ máy chủ (đòi đăng nhập xác minh). "
+                "Thử link TikTok, Facebook hoặc Instagram nhé."
+            )
+        else:
+            err_msg = (
                 "❌ Không tải được video này (có thể link lỗi, video riêng tư hoặc quá lớn)."
             )
+        try:
+            await status.edit_text(err_msg)
         except Exception:
             pass
     finally:
