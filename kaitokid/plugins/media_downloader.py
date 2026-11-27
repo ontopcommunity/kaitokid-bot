@@ -200,6 +200,7 @@ async def _handle_soundcloud(msg: Message, url: str):
     status = await msg.reply_text("🎵 Đang lấy nhạc SoundCloud...", quote=True)
     tmp = _tmpdir()
     audio_path = None
+    thumb_path = None
     try:
         # API apisynthesis thỉnh thoảng lỗi "No ClientID" (do cào client_id
         # từ soundcloud.com), thử lại tối đa 3 lần.
@@ -257,6 +258,16 @@ async def _handle_soundcloud(msg: Message, url: str):
             )
             return
 
+        # Thumbnail cho file nhạc: Pyrogram cần file local, không nhận URL.
+        thumb_path = None
+        if thumb:
+            try:
+                thumb_path = tmp / f"sc_{safe}_thumb.jpg"
+                async with aiohttp.ClientSession() as session:
+                    await _download_file(session, thumb, thumb_path)
+            except Exception:
+                thumb_path = None
+
         caption = (
             "<blockquote>"
             f"🎵 <b>{_esc(title)}</b>\n"
@@ -274,7 +285,7 @@ async def _handle_soundcloud(msg: Message, url: str):
                 parse_mode=enums.ParseMode.HTML,
                 title=title,
                 performer=author,
-                thumb=thumb or None,
+                thumb=str(thumb_path) if thumb_path else None,
                 reply_markup=kb,
                 quote=True,
             )
@@ -298,6 +309,11 @@ async def _handle_soundcloud(msg: Message, url: str):
         if audio_path and os.path.exists(audio_path):
             try:
                 os.remove(audio_path)
+            except OSError:
+                pass
+        if thumb_path and os.path.exists(thumb_path):
+            try:
+                os.remove(thumb_path)
             except OSError:
                 pass
 
