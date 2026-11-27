@@ -29,7 +29,13 @@ from urllib.parse import quote, urlparse
 
 import aiohttp
 from pyrogram import enums, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputMediaPhoto,
+    Message,
+)
 
 from kaitokid import app
 from kaitokid.core.decorator.errors import capture_err
@@ -42,6 +48,7 @@ __HELP__ = """
 <blockquote>🎵 <b>Tải nhạc & video bằng link</b>
 Dán link SoundCloud -> bot gửi file nhạc kèm tên bài + tác giả.
 Dán link TikTok -> bot gửi video không watermark kèm thông tin video.
+Dán link TikTok ảnh (Photo Mode) -> bot gửi album ảnh, bấm nút "🎵 Lấy file âm thanh" để tải nhạc nền.
 Dán link YouTube / Facebook / Instagram / X / ... -> bot gửi video chất lượng cao.
 <b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok.
 
@@ -50,6 +57,11 @@ Mọi lệnh đều chạy được với cả 3 đầu / . ! (ví dụ: /tiktok
 
 APISYNTHESIS_BASE = "https://apisynthesis.vercel.app/api"
 TIKTOK_API_BASE = "https://tiktokvippro.vercel.app/api"
+
+# Cache nhạc nền của bài TikTok ảnh: post_id -> {"music": url, "title": title}.
+# Nút "🎵 Lấy file âm thanh" dùng lại khi bấm; cache mất khi bot khởi động lại
+# (lúc đó bấm nút sẽ báo hết hạn, gửi lại link là được).
+TT_AUDIO_CACHE = {}
 # API tải video đa nền tảng (repo ontopcommunity/studiointernet-,
 # backend gendownload.com). POST /api/extract {url} -> info + formats.
 STUDIOINTERNET_API = "https://superinternetapi.vercel.app/api"
@@ -346,6 +358,98 @@ async def _handle_soundcloud(msg: Message, url: str):
 
 # ---------------------------------------------------------------- TikTok
 
+async def _handle_tiktok_photos(msg: Message, url: str, data, images, status):
+    """Bài TikTok ảnh (Photo Mode): gửi album ảnh + nút lấy file âm thanh.
+
+    API trả `images` là danh sách URL ảnh. Nhạc nền nằm ở `music.playUrl`
+    (file MP3) — chỉ tải khi người dùng bấm nút "🎵 Lấy file âm thanh",
+    không tải kèm sẵn. Telegram chỉ cho tối đa 10 ảnh/nhóm nên chia nhóm.
+    """
+    author = data.get("author") or {}
+    vd = data.get("video_data") or {}
+    stats = data.get("stats") or {}
+    music = data.get("music") or {}
+    post_id = str(vd.get("id") or "")
+    desc = vd.get("description") or ""
+    nickname = author.get("nickname") or ""
+    unique_id = author.get("uniqueId") or ""
+    music_url = music.get("playUrl") or ""
+    music_title = music.get("title") or ""
+
+    caption = (
+        "<blockquote>"
+        + (f"🖼 <b>{_esc(desc)}</b>\n" if desc else "🖼 <b>Ảnh TikTok</b>\n")
+        + f"👤 {f'@{_esc(unique_id)}' if unique_id else ''}"
+        + (f" ({_esc(nickname)})" if nickname else "")
+        + "\n"
+        + f"❤️ {_fmt_num(stats.get('like'))}  💬 {_fmt_num(stats.get('comment'))}  "
+        f"🔁 {_fmt_num(stats.get('share'))}  ▶️ {_fmt_num(stats.get('play'))}\n"
+        + (f"🎵 Nhạc: {_esc(music_title)}\n" if music_title else "")
+        + "📥 Nguồn: TikTok"
+        + "</blockquote>"
+    )
+
+    tmp = _tmpdir()
+    photo_paths = []
+    try:
+        # Tải ảnh song song cho nhanh (mỗi ảnh thường vài trăm KB).
+        async def _dl_one(i, img_url):
+            p = tmp / f"tt_{post_id or 'photo'}_{i}.jpg"
+            async with aiohttp.ClientSession() as session:
+                await _download_file(session, img_url, p)
+            return p if _is_image_file(p) else None
+
+        results = await asyncio.gather(
+            *[_dl_one(i, u) for i, u in enumerate(images)],
+            return_exceptions=True,
+        )
+        photo_paths = [r for r in results if isinstance(r, Path)]
+        if not photo_paths:
+            await status.edit_text("❌ Không tải được ảnh nào từ bài này.")
+            return
+
+        # Gửi theo nhóm tối đa 10 ảnh/nhóm, caption ở ảnh đầu tiên.
+        for gi in range(0, len(photo_paths), 10):
+            chunk = photo_paths[gi : gi + 10]
+            media = [
+                InputMediaPhoto(
+                    media=str(p),
+                    caption=caption if gi == 0 and i == 0 else None,
+                    parse_mode=enums.ParseMode.HTML if gi == 0 and i == 0 else None,
+                )
+                for i, p in enumerate(chunk)
+            ]
+            await msg.reply_media_group(media=media, quote=(gi == 0))
+
+        # Lưu nhạc để nút bấm tải lại khi cần.
+        if music_url and post_id:
+            TT_AUDIO_CACHE[post_id] = {"music": music_url, "title": music_title}
+
+        # Tin nhắn nút: mở link + lấy file âm thanh (chỉ khi có nhạc).
+        buttons = []
+        if music_url and post_id:
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        "🎵 Lấy file âm thanh", callback_data=f"tt_audio:{post_id}"
+                    )
+                ]
+            )
+        buttons.append([InlineKeyboardButton("🔗 Mở link", url=url)])
+        await msg.reply_text(
+            f"🎵 Nhạc: {_esc(music_title)}" if music_title else "🖼 Ảnh TikTok",
+            reply_markup=InlineKeyboardMarkup(buttons),
+            quote=True,
+        )
+        await status.delete()
+    finally:
+        for p in photo_paths:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+
+
 async def _handle_tiktok_video(msg: Message, url: str):
     status = await msg.reply_text("🎬 Đang lấy video TikTok...", quote=True)
     video_path = None
@@ -364,6 +468,12 @@ async def _handle_tiktok_video(msg: Message, url: str):
         stats = data.get("stats") or {}
         urls = data.get("urls") or {}
         music = data.get("music") or {}
+        # Bài ảnh (Photo Mode): API trả `images`, `no_watermark` lúc này là
+        # link nhạc chứ không phải video -> rẽ sang nhánh ảnh.
+        images = data.get("images") or []
+        if images:
+            await _handle_tiktok_photos(msg, url, data, images, status)
+            return
         dl_url = urls.get("no_watermark")
         if not dl_url:
             await status.edit_text("❌ Không lấy được link tải video.")
@@ -410,6 +520,45 @@ async def _handle_tiktok_video(msg: Message, url: str):
         if video_path and os.path.exists(video_path):
             try:
                 os.remove(video_path)
+            except OSError:
+                pass
+
+
+@app.on_callback_query(filters.regex(r"^tt_audio:(\d+)$"))
+@capture_err
+async def tiktok_audio_callback(_, query: CallbackQuery):
+    """Nút "🎵 Lấy file âm thanh" trên bài TikTok ảnh: tải nhạc nền (MP3) và gửi."""
+    m = re.match(r"^tt_audio:(\d+)$", query.data or "")
+    post_id = m.group(1) if m else ""
+    info = TT_AUDIO_CACHE.get(post_id)
+    if not info or not info.get("music"):
+        await query.answer(
+            "Nhạc đã hết hạn (bot vừa khởi động lại). Gửi lại link TikTok nhé.",
+            show_alert=True,
+        )
+        return
+    await query.answer("🎵 Đang tải nhạc...")
+    audio_path = None
+    try:
+        tmp = _tmpdir()
+        audio_path = tmp / f"tt_audio_{post_id}.mp3"
+        async with aiohttp.ClientSession() as session:
+            await _download_file(session, info["music"], audio_path)
+        title = info.get("title") or "Nhạc TikTok"
+        await query.message.reply_audio(
+            audio=str(audio_path),
+            title=title,
+            caption=f"🎵 <b>{_esc(title)}</b>",
+            parse_mode=enums.ParseMode.HTML,
+            quote=True,
+        )
+    except Exception as e:
+        LOGGER.warning("TikTok audio download fail: %s", e)
+        await query.message.reply_text("❌ Không tải được file âm thanh lúc này.")
+    finally:
+        if audio_path and os.path.exists(audio_path):
+            try:
+                os.remove(audio_path)
             except OSError:
                 pass
 
@@ -534,6 +683,22 @@ def _is_video_file(path: Path) -> bool:
     if head[:4] == b"\x1a\x45\xdf\xa3":  # WebM
         return True
     return b"ftyp" in head[4:12]  # MP4/MOV
+
+
+def _is_image_file(path: Path) -> bool:
+    """Kiểm tra file tải về có thật là ảnh không (magic bytes JPEG/PNG/WebP)."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(12)
+    except OSError:
+        return False
+    if head[:3] == b"\xff\xd8\xff":  # JPEG
+        return True
+    if head[:8] == b"\x89PNG\r\n\x1a\n":  # PNG
+        return True
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":  # WebP
+        return True
+    return False
 
 
 async def _handle_studiointernet(msg: Message, url: str):
