@@ -39,6 +39,7 @@ from pyrogram.types import (
 
 from kaitokid import app
 from kaitokid.core.decorator.errors import capture_err
+from kaitokid.helper.image_cards import make_info_card
 from kaitokid.vars import COMMAND_HANDLER
 
 LOGGER = getLogger("KaitoKid")
@@ -50,7 +51,7 @@ Dán link SoundCloud -> bot gửi file nhạc kèm tên bài + tác giả.
 Dán link TikTok -> bot gửi video không watermark kèm thông tin video.
 Dán link TikTok ảnh (Photo Mode) -> bot gửi album ảnh, bấm nút "🎵 Lấy file âm thanh" để tải nhạc nền.
 Dán link YouTube / Facebook / Instagram / X / ... -> bot gửi video chất lượng cao.
-<b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok.
+<b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok, trả về thẻ ảnh riêng (avatar + tên + follower + video).
 
 Mọi lệnh đều chạy được với cả 3 đầu / . ! (ví dụ: /tiktok, .tiktok, !tiktok).</blockquote>
 """
@@ -419,7 +420,17 @@ async def _handle_tiktok_photos(msg: Message, url: str, data, images, status):
                 )
                 for i, p in enumerate(chunk)
             ]
-            await msg.reply_media_group(media=media, quote=(gi == 0))
+            try:
+                await msg.reply_media_group(media=media, quote=(gi == 0))
+            except TypeError as e:
+                # Bug của pyrofork: send_media_group gửi ảnh xong rồi mới lỗi
+                # khi dựng kết quả trả về (Messages thiếu 'topics'). Ảnh đã
+                # gửi, chỉ cần bỏ qua lỗi này và tiếp tục.
+                if "topics" not in str(e):
+                    raise
+                LOGGER.warning(
+                    "pyrofork send_media_group topics bug (ảnh đã gửi): %s", e
+                )
 
         # Lưu nhạc để nút bấm tải lại khi cần.
         if music_url and post_id:
@@ -606,9 +617,58 @@ async def tiktok_user_info(_, ctx: Message):
         kb = _open_link_kb(
             f"https://www.tiktok.com/@{unique_id}", label="🔗 Mở TikTok"
         )
+        # Vẽ thẻ ảnh thông tin TikTok (cùng cơ chế welcomepic: nền bg.png,
+        # avatar tròn). Nếu vẽ lỗi thì gửi ảnh đại diện gốc, rồi mới text.
         avatar = a.get("avatar")
-        if avatar:
-            try:
+        card_path = None
+        avatar_path = None
+        try:
+            tmp = _tmpdir()
+            if avatar:
+                avatar_path = tmp / f"tt_avatar_{unique_id}.jpg"
+                async with aiohttp.ClientSession() as session:
+                    await _download_file(session, avatar, avatar_path)
+            card_lines = [
+                (nickname or unique_id, 38),
+                (f"@{unique_id}", 30),
+                (
+                    f"Follower: {_fmt_num(sr.get('follower'))}"
+                    f"  •  Follow: {_fmt_num(sr.get('following'))}",
+                    28,
+                ),
+                (
+                    f"Tim: {_fmt_num(sr.get('heart'))}"
+                    f"  •  Video: {_fmt_num(sr.get('video'))}",
+                    28,
+                ),
+                (f"Bio: {a.get('signature')}" if a.get("signature") else "", 26),
+                (
+                    f"Khu vực: {a.get('region')}"
+                    if a.get("region")
+                    else ("Đang livestream" if live.get("is_live") else ""),
+                    26,
+                ),
+            ]
+            card_lines = [ln for ln in card_lines if ln[0]]
+            card_path = await make_info_card(
+                str(avatar_path) if avatar_path and avatar_path.exists() else None,
+                "THÔNG TIN TIKTOK",
+                card_lines,
+                str(tmp / f"tt_card_{unique_id}.png"),
+            )
+        except Exception as e:
+            LOGGER.warning("Không vẽ được thẻ TikTok: %s", e)
+            card_path = None
+        try:
+            if card_path:
+                await ctx.reply_photo(
+                    photo=card_path,
+                    caption=caption,
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=kb,
+                    quote=True,
+                )
+            elif avatar:
                 await ctx.reply_photo(
                     photo=avatar,
                     caption=caption,
@@ -616,16 +676,21 @@ async def tiktok_user_info(_, ctx: Message):
                     reply_markup=kb,
                     quote=True,
                 )
-                return await status.delete()
-            except Exception:
-                pass
-        await ctx.reply_text(
-            caption,
-            parse_mode=enums.ParseMode.HTML,
-            reply_markup=kb,
-            quote=True,
-            disable_web_page_preview=True,
-        )
+            else:
+                await ctx.reply_text(
+                    caption,
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=kb,
+                    quote=True,
+                    disable_web_page_preview=True,
+                )
+        finally:
+            for p in (avatar_path, card_path):
+                if p:
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
         await status.delete()
     except Exception as e:
         LOGGER.exception("TikTok user handler error")
