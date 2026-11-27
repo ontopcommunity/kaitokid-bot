@@ -393,7 +393,7 @@ async def handle_links_in_group(client, message: Message):
 
     await message.reply_msg(text)
 
-@app.on_message(filters.command("leave") & filters.user(SUDO))
+@app.on_message(filters.command("leave", COMMAND_HANDLER) & filters.user(SUDO))
 async def leave_a_chat(bot, message):
     if len(message.command) == 1:
         return await message.reply("Cho tôi id trò chuyện")
@@ -573,7 +573,7 @@ async def suttoi_callback(_, callback_query):
     except Exception as err:
         await callback_query.message.edit_text(f"LỖI: {err}")
         
-@app.on_message(filters.command("users") & filters.user(SUDO))
+@app.on_message(filters.command("users", COMMAND_HANDLER) & filters.user(SUDO))
 async def list_users(_, message):
     msg = await message.reply("Đang lấy danh sách thành viên")
     
@@ -605,7 +605,7 @@ async def list_users(_, message):
         await msg.delete()
 
 
-@app.on_message(filters.command("chats") & filters.user(SUDO))
+@app.on_message(filters.command("chats", COMMAND_HANDLER) & filters.user(SUDO))
 async def list_chats(_, message):
     msg = await message.reply("Đang lấy danh sách trò chuyện")
     chats = await db.get_all_chats()
@@ -623,7 +623,7 @@ async def list_chats(_, message):
         await message.reply_document("chats.txt", caption="Danh sách trò chuyện")
         await msg.delete_msg()
 
-@app.on_message(filters.command("allusers") & filters.user(SUDO))
+@app.on_message(filters.command("allusers", COMMAND_HANDLER) & filters.user(SUDO))
 async def all_users(_, message):
     msg = await message.reply("Đang lấy toàn bộ dữ liệu người dùng")
     
