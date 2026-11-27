@@ -629,25 +629,19 @@ async def tiktok_user_info(_, ctx: Message):
                 async with aiohttp.ClientSession() as session:
                     await _download_file(session, avatar, avatar_path)
             card_lines = [
-                (nickname or unique_id, 38),
-                (f"@{unique_id}", 30),
+                (nickname or unique_id, 26),
+                (f"@{unique_id}", 24),
                 (
                     f"Follower: {_fmt_num(sr.get('follower'))}"
                     f"  •  Follow: {_fmt_num(sr.get('following'))}",
-                    28,
+                    22,
                 ),
                 (
                     f"Tim: {_fmt_num(sr.get('heart'))}"
                     f"  •  Video: {_fmt_num(sr.get('video'))}",
-                    28,
+                    22,
                 ),
-                (f"Bio: {a.get('signature')}" if a.get("signature") else "", 26),
-                (
-                    f"Khu vực: {a.get('region')}"
-                    if a.get("region")
-                    else ("Đang livestream" if live.get("is_live") else ""),
-                    26,
-                ),
+                (f"Bio: {a.get('signature')}" if a.get("signature") else "", 20),
             ]
             card_lines = [ln for ln in card_lines if ln[0]]
             card_path = await make_info_card(
@@ -655,6 +649,7 @@ async def tiktok_user_info(_, ctx: Message):
                 "THÔNG TIN TIKTOK",
                 card_lines,
                 str(tmp / f"tt_card_{unique_id}.png"),
+                style="tiktok",
             )
         except Exception as e:
             LOGGER.warning("Không vẽ được thẻ TikTok: %s", e)
