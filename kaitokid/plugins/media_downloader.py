@@ -1,0 +1,497 @@
+"""
+Media Downloader — dán link là bot gửi nhạc/video.
+
+- Link SoundCloud -> lấy info + file nhạc qua API apisynthesis
+  (repo ontopcommunity/apisynthesis, deploy apisynthesis.vercel.app).
+- Link TikTok -> lấy info + video không watermark qua API repo Tiktok
+  (repo ontopcommunity/Tiktok, deploy tiktokvippro.vercel.app).
+- Link video nền tảng khác (YouTube, Instagram, Facebook, X, ...) ->
+  tải video chất lượng cao nhất bằng yt-dlp.
+- /tiktok {username} -> thông tin tài khoản TikTok.
+
+Toàn bộ caption đều dùng định dạng trích dẫn (blockquote) + nút
+inline "Mở link" dẫn tới link gốc.
+"""
+
+import asyncio
+import html
+import logging
+import os
+import re
+import shutil
+import tempfile
+from pathlib import Path
+from urllib.parse import quote, urlparse
+
+import aiohttp
+from pyrogram import enums, filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+
+from kaitokid import app
+from kaitokid.core.decorator.errors import capture_err
+from kaitokid.vars import COMMAND_HANDLER
+
+LOGGER = getLogger("KaitoKid")
+
+__MODULE__ = "TảiNhạcVideo"
+__HELP__ = """
+<blockquote>🎵 <b>Tải nhạc & video bằng link</b>
+Dán link SoundCloud -> bot gửi file nhạc kèm tên bài + tác giả.
+Dán link TikTok -> bot gửi video kèm thông tin video.
+Dán link YouTube / Instagram / Facebook / X / ... -> bot gửi video chất lượng cao nhất.
+<b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok.</blockquote>
+"""
+
+APISYNTHESIS_BASE = "https://apisynthesis.vercel.app/api"
+TIKTOK_API_BASE = "https://tiktokvippro.vercel.app/api"
+
+# Telegram Bot API giới hạn file gửi 50MB, để dư 2MB.
+MAX_FILE_SIZE = 48 * 1024 * 1024
+
+UA = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    )
+}
+
+SOUNDCLOUD_RE = re.compile(
+    r"https?://(?:www\.|m\.)?(?:soundcloud\.com|on\.soundcloud\.com)/\S+",
+    re.IGNORECASE,
+)
+TIKTOK_RE = re.compile(
+    r"https?://(?:www\.|m\.|vt\.|vm\.)?tiktok\.com/\S+",
+    re.IGNORECASE,
+)
+URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+
+VIDEO_DOMAINS = (
+    "youtube.com",
+    "youtu.be",
+    "instagram.com",
+    "facebook.com",
+    "fb.watch",
+    "twitter.com",
+    "x.com",
+    "vimeo.com",
+    "dailymotion.com",
+    "twitch.tv",
+    "reddit.com",
+    "pinterest.",
+    "threads.net",
+    "capcut.com",
+    "likee.video",
+    "snapchat.com",
+    "bilibili.com",
+)
+
+
+def _fmt_duration(ms_or_s):
+    """Đổi mili-giây (SoundCloud) hoặc giây thành mm:ss."""
+    try:
+        total = int(ms_or_s)
+    except (TypeError, ValueError):
+        return ""
+    if total > 10000:  # mili-giây
+        total //= 1000
+    m, s = divmod(total, 60)
+    h, m = divmod(m, 60)
+    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def _fmt_num(n):
+    """1.234.567 -> 1,2M / 3,4K cho gọn."""
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return "0"
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f}B".replace(".", ",")
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M".replace(".", ",")
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K".replace(".", ",")
+    return str(n)
+
+
+def _esc(s):
+    return html.escape(str(s or ""), quote=False)
+
+
+def _open_link_kb(url, label="🔗 Mở link"):
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton(text=label, url=url)]]
+    )
+
+
+def _tmpdir():
+    d = Path(tempfile.gettempdir()) / "kaitokid_media"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+async def _fetch_json(session, url, params=None, timeout=60):
+    async with session.get(
+        url, params=params, headers=UA, timeout=aiohttp.ClientTimeout(total=timeout)
+    ) as resp:
+        if resp.status >= 400:
+            raise RuntimeError(f"API lỗi {resp.status}")
+        return await resp.json(content_type=None)
+
+
+async def _download_file(session, url, dest: Path, timeout=300):
+    """Tải file trực tiếp về dest, trả về kích thước bytes."""
+    async with session.get(
+        url, headers=UA, timeout=aiohttp.ClientTimeout(total=timeout)
+    ) as resp:
+        if resp.status >= 400:
+            raise RuntimeError(f"Tải file lỗi {resp.status}")
+        size = 0
+        with open(dest, "wb") as f:
+            async for chunk in resp.content.iter_chunked(512 * 1024):
+                f.write(chunk)
+                size += len(chunk)
+                if size > MAX_FILE_SIZE:
+                    raise RuntimeError("File quá lớn (>48MB)")
+        return size
+
+
+def _ytdlp_download(url, outtmpl, audio_only=False):
+    """Chạy yt-dlp (blocking) -> trả về (file_path, info)."""
+    import yt_dlp
+
+    if audio_only:
+        ydl_opts = {
+            "format": "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio/best",
+            "outtmpl": outtmpl,
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+            "max_filesize": MAX_FILE_SIZE,
+            "postprocessors": [],
+        }
+    else:
+        ydl_opts = {
+            # File đơn chất lượng cao nhất, không cần ffmpeg để gộp.
+            "format": "best[ext=mp4]/best[ext=webm]/best",
+            "outtmpl": outtmpl,
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+            "max_filesize": MAX_FILE_SIZE,
+        }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        path = ydl.prepare_filename(info)
+        # yt-dlp có thể đổi đuôi file thực tế so với prepare_filename
+        if not os.path.exists(path):
+            base = os.path.splitext(path)[0]
+            for cand in Path(outtmpl).parent.glob(os.path.basename(base) + ".*"):
+                if cand.is_file() and cand.stat().st_size > 0:
+                    path = str(cand)
+                    break
+        return path, info
+
+
+# ---------------------------------------------------------------- SoundCloud
+
+async def _handle_soundcloud(msg: Message, url: str):
+    status = await msg.reply_text("🎵 Đang lấy nhạc SoundCloud...", quote=True)
+    tmp = _tmpdir()
+    audio_path = None
+    try:
+        async with aiohttp.ClientSession() as session:
+            data = await _fetch_json(
+                session, APISYNTHESIS_BASE, params={"url": url}
+            )
+        if data.get("error") or data.get("type") != "track":
+            await status.edit_text(
+                "❌ Không lấy được bài này. Kiểm tra lại link SoundCloud nhé."
+            )
+            return
+        title = data.get("title") or "Untitled"
+        author = data.get("author") or "Unknown artist"
+        duration = _fmt_duration(data.get("duration") or 0)
+        permalink = data.get("permalink_url") or url
+        thumb = data.get("thumbnail") or ""
+
+        # Tải nhạc bằng yt-dlp (link HLS của API bị mã hóa, không tải trực tiếp được).
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", f"{author}-{title}")[:60]
+        outtmpl = str(tmp / f"sc_{safe}.%(ext)s")
+        try:
+            audio_path, _info = await asyncio.to_thread(
+                _ytdlp_download, url, outtmpl, True
+            )
+        except Exception as e:
+            LOGGER.warning("yt-dlp SoundCloud fail: %s", e)
+            audio_path = None
+
+        caption = (
+            "<blockquote>"
+            f"🎵 <b>{_esc(title)}</b>\n"
+            f"👤 Tác giả: {_esc(author)}\n"
+            + (f"⏱ Thời lượng: {duration}\n" if duration else "")
+            + "📥 Nguồn: SoundCloud"
+            + "</blockquote>"
+        )
+        kb = _open_link_kb(permalink)
+
+        if audio_path and os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
+            await msg.reply_audio(
+                audio=audio_path,
+                caption=caption,
+                parse_mode=enums.ParseMode.HTML,
+                title=title,
+                performer=author,
+                thumb=thumb or None,
+                reply_markup=kb,
+                quote=True,
+            )
+        else:
+            # Không tải được file thì vẫn gửi info + nút mở link.
+            await msg.reply_text(
+                caption + "\n⚠️ Không tải được file nhạc, bấm nút dưới để nghe trên SoundCloud nhé.",
+                parse_mode=enums.ParseMode.HTML,
+                reply_markup=kb,
+                quote=True,
+                disable_web_page_preview=False,
+            )
+        await status.delete()
+    except Exception as e:
+        LOGGER.exception("SoundCloud handler error")
+        try:
+            await status.edit_text(f"❌ Lỗi: {e}")
+        except Exception:
+            pass
+    finally:
+        if audio_path and os.path.exists(audio_path):
+            try:
+                os.remove(audio_path)
+            except OSError:
+                pass
+
+
+# ---------------------------------------------------------------- TikTok
+
+async def _handle_tiktok_video(msg: Message, url: str):
+    status = await msg.reply_text("🎬 Đang lấy video TikTok...", quote=True)
+    video_path = None
+    try:
+        async with aiohttp.ClientSession() as session:
+            data = await _fetch_json(
+                session, f"{TIKTOK_API_BASE}/video", params={"video": url}
+            )
+        if data.get("error") or data.get("status") != "Live":
+            await status.edit_text(
+                "❌ Không lấy được video này (có thể bị khóa riêng tư). Kiểm tra lại link nhé."
+            )
+            return
+        author = data.get("author") or {}
+        vd = data.get("video_data") or {}
+        stats = data.get("stats") or {}
+        urls = data.get("urls") or {}
+        music = data.get("music") or {}
+        dl_url = urls.get("no_watermark")
+        if not dl_url:
+            await status.edit_text("❌ Không lấy được link tải video.")
+            return
+
+        desc = vd.get("description") or ""
+        nickname = author.get("nickname") or ""
+        unique_id = author.get("uniqueId") or ""
+        duration = _fmt_duration(vd.get("duration") or 0)
+
+        tmp = _tmpdir()
+        video_path = tmp / f"tt_{vd.get('id') or 'video'}.mp4"
+        async with aiohttp.ClientSession() as session:
+            await _download_file(session, dl_url, video_path)
+
+        caption = (
+            "<blockquote>"
+            + (f"🎬 <b>{_esc(desc)}</b>\n" if desc else "🎬 <b>Video TikTok</b>\n")
+            + f"👤 {f'@{_esc(unique_id)}' if unique_id else ''}"
+            + (f" ({_esc(nickname)})" if nickname else "")
+            + "\n"
+            + f"❤️ {_fmt_num(stats.get('like'))}  💬 {_fmt_num(stats.get('comment'))}  "
+            f"🔁 {_fmt_num(stats.get('share'))}  ▶️ {_fmt_num(stats.get('play'))}\n"
+            + (f"⏱ {duration}\n" if duration else "")
+            + (f"🎵 Nhạc: {_esc(music.get('title'))}\n" if music.get("title") else "")
+            + "📥 Nguồn: TikTok"
+            + "</blockquote>"
+        )
+        await msg.reply_video(
+            video=str(video_path),
+            caption=caption,
+            parse_mode=enums.ParseMode.HTML,
+            reply_markup=_open_link_kb(url),
+            quote=True,
+        )
+        await status.delete()
+    except Exception as e:
+        LOGGER.exception("TikTok video handler error")
+        try:
+            await status.edit_text(f"❌ Lỗi: {e}")
+        except Exception:
+            pass
+    finally:
+        if video_path and os.path.exists(video_path):
+            try:
+                os.remove(video_path)
+            except OSError:
+                pass
+
+
+@app.on_message(filters.command(["tiktok"], COMMAND_HANDLER))
+@capture_err
+async def tiktok_user_info(_, ctx: Message):
+    if len(ctx.command) < 2:
+        return await ctx.reply_text(
+            "<blockquote>👤 Dùng: <b>/tiktok {username}</b>\nVí dụ: <b>/tiktok charlidamelio</b></blockquote>",
+            parse_mode=enums.ParseMode.HTML,
+            quote=True,
+        )
+    username = ctx.command[1].lstrip("@").strip()
+    status = await ctx.reply_text("🔍 Đang tìm tài khoản TikTok...", quote=True)
+    try:
+        async with aiohttp.ClientSession() as session:
+            data = await _fetch_json(
+                session, TIKTOK_API_BASE, params={"username": username}
+            )
+        if data.get("status") != "Live" or not data.get("author"):
+            return await status.edit_text(
+                "❌ Không tìm thấy tài khoản này. Kiểm tra lại username nhé."
+            )
+        a = data["author"]
+        sf = data.get("stats_formatted") or {}
+        sr = data.get("stats_raw") or {}
+        live = data.get("live_info") or {}
+        nickname = a.get("nickname") or ""
+        unique_id = a.get("uniqueId") or username
+        verified = " ✅" if a.get("verified") else ""
+        caption = (
+            "<blockquote>"
+            f"👤 <b>{_esc(nickname)}</b>{verified}\n"
+            f"🆔 @{_esc(unique_id)}\n"
+            + (f"📝 {_esc(a.get('signature'))}\n" if a.get("signature") else "")
+            + f"👥 Follower: <b>{_esc(sf.get('follower') or _fmt_num(sr.get('follower')))}</b>"
+            f"  •  Đang follow: {_esc(sf.get('following') or _fmt_num(sr.get('following')))}\n"
+            + f"❤️ {_esc(sf.get('heart') or _fmt_num(sr.get('heart')))}"
+            f"  •  🎬 {_esc(sf.get('video') or _fmt_num(sr.get('video')))} video\n"
+            + (f"🌍 Khu vực: {_esc(a.get('region'))}\n" if a.get("region") else "")
+            + (f"🔴 Đang livestream\n" if live.get("is_live") else "")
+            + "📥 Nguồn: TikTok"
+            + "</blockquote>"
+        )
+        kb = _open_link_kb(
+            f"https://www.tiktok.com/@{unique_id}", label="🔗 Mở TikTok"
+        )
+        avatar = a.get("avatar")
+        if avatar:
+            try:
+                await ctx.reply_photo(
+                    photo=avatar,
+                    caption=caption,
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=kb,
+                    quote=True,
+                )
+                return await status.delete()
+            except Exception:
+                pass
+        await ctx.reply_text(
+            caption,
+            parse_mode=enums.ParseMode.HTML,
+            reply_markup=kb,
+            quote=True,
+            disable_web_page_preview=True,
+        )
+        await status.delete()
+    except Exception as e:
+        LOGGER.exception("TikTok user handler error")
+        try:
+            await status.edit_text(f"❌ Lỗi: {e}")
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------- Video nền tảng khác
+
+def _is_video_domain(url: str):
+    try:
+        host = urlparse(url).netloc.lower().lstrip("www.")
+    except Exception:
+        return False
+    return any(host == d or host.endswith("." + d) for d in VIDEO_DOMAINS)
+
+
+async def _handle_generic_video(msg: Message, url: str):
+    status = await msg.reply_text("🎬 Đang tải video...", quote=True)
+    video_path = None
+    try:
+        host = urlparse(url).netloc
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", urlparse(url).path.strip("/"))[:40]
+        outtmpl = str(_tmpdir() / f"vid_{safe or 'video'}.%(ext)s")
+        video_path, info = await asyncio.to_thread(
+            _ytdlp_download, url, outtmpl, False
+        )
+        if not video_path or not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
+            raise RuntimeError("Không tải được video.")
+        title = info.get("title") or "Video"
+        uploader = info.get("uploader") or info.get("channel") or ""
+        duration = _fmt_duration(info.get("duration") or 0)
+        caption = (
+            "<blockquote>"
+            f"🎬 <b>{_esc(title)}</b>\n"
+            + (f"👤 { _esc(uploader)}\n" if uploader else "")
+            + (f"⏱ Thời lượng: {duration}\n" if duration else "")
+            + f"📥 Nguồn: {_esc(host)}"
+            + "</blockquote>"
+        )
+        await msg.reply_video(
+            video=video_path,
+            caption=caption,
+            parse_mode=enums.ParseMode.HTML,
+            reply_markup=_open_link_kb(url),
+            quote=True,
+        )
+        await status.delete()
+    except Exception as e:
+        LOGGER.exception("Generic video handler error")
+        try:
+            await status.edit_text(
+                "❌ Không tải được video này (có thể link lỗi, video riêng tư hoặc quá lớn)."
+            )
+        except Exception:
+            pass
+    finally:
+        if video_path and os.path.exists(video_path):
+            try:
+                os.remove(video_path)
+            except OSError:
+                pass
+
+
+# ---------------------------------------------------------------- Watcher: bắt link trong tin nhắn
+
+@app.on_message(
+    filters.text & ~filters.bot & ~filters.via_bot & ~filters.command(COMMAND_HANDLER),
+    group=2,
+)
+@capture_err
+async def media_link_watcher(_, msg: Message):
+    text = msg.text or ""
+    if not text:
+        return
+    # SoundCloud trước
+    m = SOUNDCLOUD_RE.search(text)
+    if m:
+        return await _handle_soundcloud(msg, m.group(0).rstrip(").,]>"))
+    # TikTok
+    m = TIKTOK_RE.search(text)
+    if m:
+        return await _handle_tiktok_video(msg, m.group(0).rstrip(").,]>"))
+    # Video nền tảng khác
+    for m in URL_RE.finditer(text):
+        link = m.group(0).rstrip(").,]>")
+        if _is_video_domain(link):
+            return await _handle_generic_video(msg, link)
