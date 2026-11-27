@@ -394,7 +394,9 @@ async def who_is(client, message):
             "THÔNG TIN NGƯỜI DÙNG",
             card_lines,
             f"downloads/info#{from_user.id}.png",
-            style="info",
+            # Truyền vị trí, không dùng keyword: asyncify dùng
+            # run_in_executor nên không nhận keyword argument.
+            "info",
         )
     except Exception as e:
         LOGGER.warning("Không vẽ được thẻ info: %s", e)
