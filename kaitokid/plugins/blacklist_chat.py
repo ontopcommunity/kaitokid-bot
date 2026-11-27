@@ -15,7 +15,7 @@ from database.blacklist_db import (
 from kaitokid import app
 from kaitokid.core.decorator.errors import capture_err
 from kaitokid.core.decorator.permissions import adminsOnly, list_admins
-from kaitokid.vars import SUDO
+from kaitokid.vars import COMMAND_HANDLER, SUDO
 
 LOGGER = getLogger("KaitoKid")
 
@@ -26,7 +26,7 @@ __HELP__ = """
 /dstrang [TỪ|CÂU] - Cho phép một từ hoặc một câu.</blockquote>
 """
 
-@app.on_message(filters.command("dsden") & ~filters.private)
+@app.on_message(filters.command("dsden", COMMAND_HANDLER) & ~filters.private)
 @adminsOnly("can_restrict_members")
 async def save_filters(_, message):
     if len(message.command) < 2:
@@ -38,7 +38,7 @@ async def save_filters(_, message):
     await save_blacklist_filter(chat_id, word)
     await message.reply_text(f"__**Đã cấm {word}.**__")
 
-@app.on_message(filters.command("xemdsden") & ~filters.private)
+@app.on_message(filters.command("xemdsden", COMMAND_HANDLER) & ~filters.private)
 @capture_err
 async def get_filterss(_, message):
     data = await get_blacklisted_words(message.chat.id)
@@ -50,7 +50,7 @@ async def get_filterss(_, message):
             msg += f"**-** `{word}`\n"
         await message.reply_text(msg)
 
-@app.on_message(filters.command("dstrang") & ~filters.private)
+@app.on_message(filters.command("dstrang", COMMAND_HANDLER) & ~filters.private)
 @adminsOnly("can_restrict_members")
 async def del_filter(_, message):
     if len(message.command) < 2:
