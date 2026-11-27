@@ -3,10 +3,8 @@ import asyncio
 import logging
 from logging import getLogger
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from pyrogram import filters, Client
 from pyrogram.errors import PeerIdInvalid
-from database.funny_db import get_daily_usage_count, increment_daily_usage
 from database.karma_db import (
     get_karma,
     get_karmas,
@@ -17,7 +15,7 @@ from database.karma_db import (
     reset_all_karma,
 )
 from kaitokid import app
-from kaitokid.vars import COMMAND_HANDLER, SUDO, TZ
+from kaitokid.vars import COMMAND_HANDLER
 from kaitokid.core.decorator.errors import capture_err
 from kaitokid.core.decorator.permissions import adminsOnly
 from kaitokid.helper.functions import alpha_to_int, int_to_alpha
@@ -37,34 +35,6 @@ Dành điểm danh tiếng cho người khác trong nhóm và tự động đán
 
 karma_positive_group = 3
 karma_negative_group = 4
-
-# Giới hạn lượt đánh giá (upvote/downvote) mỗi ngày.
-# Chủ bot (SUDO) không giới hạn; người khác tối đa 10 lượt/ngày (theo giờ VN).
-# Hết lượt: handler im lặng bỏ qua, bot không báo gì.
-KARMA_RATE_LIMIT = 10
-KARMA_RATE_COMMAND = "karma_rate"
-
-
-def _rate_day():
-    """Ngày hiện tại theo múi giờ của bot (mặc định giờ VN)."""
-    return datetime.now(ZoneInfo(TZ)).date()
-
-
-async def _can_rate(chat_id: int, rater_id: int) -> bool:
-    if rater_id in SUDO:
-        return True
-    count = await get_daily_usage_count(
-        chat_id, rater_id, KARMA_RATE_COMMAND, _rate_day()
-    )
-    return count < KARMA_RATE_LIMIT
-
-
-async def _record_rate(chat_id: int, rater_id: int):
-    if rater_id in SUDO:
-        return
-    await increment_daily_usage(
-        chat_id, rater_id, KARMA_RATE_COMMAND, _rate_day()
-    )
 
 regex_upvote = r"\b(like|thank you|cảm ơn|thanks|thank|c\.ơn|cám ơn|đội ơn|tks|👍)\b"
 regex_downvote = r"\b(không thích|👎|unlike|dislike)\b"
@@ -133,12 +103,6 @@ async def upvote(_, message):
     user_id = message.reply_to_message.from_user.id
     user_mention = message.reply_to_message.from_user.mention
 
-    # Giới hạn lượt đánh giá: chủ bot vô hạn, người khác tối đa 10/ngày.
-    # Hết lượt thì im lặng bỏ qua, không báo gì.
-    rater_id = message.from_user.id
-    if not await _can_rate(chat_id, rater_id):
-        return
-
     current_karma = await get_karma(chat_id, await int_to_alpha(user_id))
     if current_karma:
         current_karma = current_karma["karma"]
@@ -148,7 +112,6 @@ async def upvote(_, message):
 
     new_karma = {"karma": karma}
     await update_karma(chat_id, await int_to_alpha(user_id), new_karma)
-    await _record_rate(chat_id, rater_id)
 
     response_message = await message.reply_text(
         f"❤️ Bạn làm tốt lắm {user_mention}. Hệ thống đã tăng điểm danh tiếng của bạn vì bạn được người khác khen ngợi hoặc cảm ơn."
@@ -184,12 +147,6 @@ async def downvote(_, message):
     user_id = message.reply_to_message.from_user.id
     user_mention = message.reply_to_message.from_user.mention
 
-    # Giới hạn lượt đánh giá: chủ bot vô hạn, người khác tối đa 10/ngày.
-    # Hết lượt thì im lặng bỏ qua, không báo gì.
-    rater_id = message.from_user.id
-    if not await _can_rate(chat_id, rater_id):
-        return
-
     current_karma = await get_karma(chat_id, await int_to_alpha(user_id))
     if current_karma:
         current_karma = current_karma["karma"]
@@ -199,7 +156,6 @@ async def downvote(_, message):
 
     new_karma = {"karma": karma}
     await update_karma(chat_id, await int_to_alpha(user_id), new_karma)
-    await _record_rate(chat_id, rater_id)
 
     response_message = await message.reply_text(
         f"😢 Không ổn rồi {user_mention}. Hệ thống đã giảm điểm danh tiếng của bạn xuống vì bạn đã khiến người khác phàn nàn."
