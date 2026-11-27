@@ -392,6 +392,10 @@ async def who_is(client, message):
         )
     except Exception as e:
         LOGGER.warning("Không vẽ được thẻ info: %s", e)
+    # Caption trích dẫn có nút mở rộng/thu nhỏ (blockquote expandable).
+    caption_out = (
+        "<blockquote expandable>" + message_out_str.strip() + "</blockquote>"
+    )
     buttons = [
         [
             InlineKeyboardButton(
@@ -406,7 +410,8 @@ async def who_is(client, message):
                 photo=card_path,
                 quote=True,
                 reply_markup=reply_markup,
-                caption=message_out_str,
+                caption=caption_out,
+                parse_mode=ParseMode.HTML,
                 disable_notification=True,
             )
         elif avatar_path:
@@ -414,12 +419,14 @@ async def who_is(client, message):
                 photo=avatar_path,
                 quote=True,
                 reply_markup=reply_markup,
-                caption=message_out_str,
+                caption=caption_out,
+                parse_mode=ParseMode.HTML,
                 disable_notification=True,
             )
         else:
             await message.reply_text(
-                text=message_out_str,
+                text=caption_out,
+                parse_mode=ParseMode.HTML,
                 reply_markup=reply_markup,
                 quote=True,
                 disable_notification=True,
