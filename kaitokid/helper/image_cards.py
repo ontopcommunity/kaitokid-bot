@@ -48,9 +48,12 @@ STYLES = {
         "canvas": (1024, 683),
         "center_x": 477,
         "title_y": 40, "title_size": 38, "title_fill": "black",
-        "avatar_size": 250, "avatar_y": 195,
+        "avatar_size": 250, "avatar_y": 205,
         "name_size": 32, "name_gap": 14,
         "subtitle_size": 24, "subtitle_gap": 14,
+        # Khung bo tròn (pill) sau tên: vàng gold, dài theo tên.
+        "pill_fill": "#D4AF37", "pill_outline": None, "pill_outline_w": 0,
+        "pill_pad_x": 22, "pill_pad_y": 8,
         "stat_icon": 24, "stat_num": 22, "stat_label": 16,
         "stat_gap": 6, "stat_col_w": 160,
         "bio_size": 22, "bio_gap": 10,
@@ -64,9 +67,12 @@ STYLES = {
         "canvas": (1024, 512),
         "center_x": 490,
         "title_y": 38, "title_size": 36, "title_fill": "white",
-        "avatar_size": 180, "avatar_y": 125,
+        "avatar_size": 160, "avatar_y": 140,
         "name_size": 28, "name_gap": 12,
         "subtitle_size": 22, "subtitle_gap": 8,
+        # Khung bo tròn (pill) sau tên/user: nền tối, viền cyan neon.
+        "pill_fill": "#1E1E2E", "pill_outline": "#25F4EE", "pill_outline_w": 2,
+        "pill_pad_x": 18, "pill_pad_y": 6,
         "stat_icon": 22, "stat_num": 20, "stat_label": 15,
         "stat_gap": 2, "stat_col_w": 140,
         "bio_size": 18, "bio_gap": 6,
@@ -411,19 +417,41 @@ def make_info_card(avatar_path, title, out_path, style="info",
 
     y = st["avatar_y"] + st["avatar_size"] + st["name_gap"]
 
-    # Tên chính.
+    # Khung bo tròn (pill) sau chữ, dài theo chữ.
+    def _draw_pill(text, text_y, size):
+        tw = _text_width(text, size)
+        pad_x = st.get("pill_pad_x", 18)
+        pad_y = st.get("pill_pad_y", 6)
+        line_h = int(size * 1.35)
+        x0 = center_x - tw / 2 - pad_x
+        x1 = center_x + tw / 2 + pad_x
+        y0 = text_y - pad_y
+        y1 = text_y + line_h + pad_y
+        fill_c = st.get("pill_fill")
+        out_c = st.get("pill_outline")
+        out_w = st.get("pill_outline_w", 0) or 0
+        draw.rounded_rectangle(
+            [x0, y0, x1, y1], radius=(y1 - y0) // 2,
+            fill=fill_c, outline=out_c, width=out_w,
+        )
+        return line_h + 2 * pad_y
+
+    # Tên chính (có khung bo tròn).
     if name:
         name = str(name).replace("\r", " ").replace("\n", " ").strip()
         name = _fit_text_width(name, st["name_size"], st["text_max_w"])
+        pill_h = _draw_pill(name, y, st["name_size"])
         _draw_centered(bg, draw, name, y, center_x, st["name_size"], fill=fill)
-        y += int(st["name_size"] * 1.35)
+        y += pill_h
 
-    # Dòng phụ (vd: @username).
+    # Dòng phụ (vd: @username) — TikTok cũng có khung như tên.
     if subtitle:
+        y += st["subtitle_gap"]
         subtitle = str(subtitle).replace("\r", " ").replace("\n", " ").strip()
         subtitle = _fit_text_width(subtitle, st["subtitle_size"], st["text_max_w"])
+        pill_h = _draw_pill(subtitle, y, st["subtitle_size"])
         _draw_centered(bg, draw, subtitle, y, center_x, st["subtitle_size"], fill=fill)
-        y += int(st["subtitle_size"] * 1.35)
+        y += pill_h
 
     y += st["subtitle_gap"]
 
