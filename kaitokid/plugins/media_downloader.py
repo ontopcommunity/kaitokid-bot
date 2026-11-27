@@ -513,6 +513,29 @@ def _pick_video_formats(data):
     return pref + rest
 
 
+def _is_video_file(path: Path) -> bool:
+    """Kiểm tra file tải về có thật là video không (magic bytes).
+
+    API đôi khi trả thumbnail (JPEG/PNG) thay cho video (gặp ở Instagram)
+    — gửi nhầm ảnh dưới dạng video thì người dùng nhận được file hỏng.
+    MP4/MOV có 'ftyp' ở byte 4-8, WebM bắt đầu bằng 1A 45 DF A3.
+    """
+    try:
+        with open(path, "rb") as f:
+            head = f.read(12)
+    except OSError:
+        return False
+    if len(head) < 12:
+        return False
+    if head[:3] == b"\xff\xd8\xff":  # JPEG
+        return False
+    if head[:8] == b"\x89PNG\r\n\x1a\n":  # PNG
+        return False
+    if head[:4] == b"\x1a\x45\xdf\xa3":  # WebM
+        return True
+    return b"ftyp" in head[4:12]  # MP4/MOV
+
+
 async def _handle_studiointernet(msg: Message, url: str):
     """Tải video đa nền tảng qua API studiointernet (gendownload).
 
@@ -531,7 +554,11 @@ async def _handle_studiointernet(msg: Message, url: str):
         title = data.get("title") or "Video"
         author = data.get("author") or ""
         source = data.get("source") or urlparse(url).netloc
-        duration = _fmt_duration(data.get("duration") or 0)
+        # API đôi khi trả title dạng slug (vd: instagram_DVlQlfRkzKB) — đổi thành "Video".
+        if title.startswith(source + "_"):
+            title = "Video"
+        raw_duration = data.get("duration") or 0
+        duration = _fmt_duration(raw_duration) if raw_duration else ""
         views = data.get("views")
         likes = data.get("likes")
 
@@ -546,6 +573,8 @@ async def _handle_studiointernet(msg: Message, url: str):
                     video_path.unlink()
                 async with aiohttp.ClientSession() as session:
                     await _download_file(session, fmt["url"], video_path)
+                if not _is_video_file(video_path):
+                    raise RuntimeError("File tải về không phải video (có thể là ảnh).")
                 downloaded = True
                 break
             except Exception as e:
