@@ -92,8 +92,13 @@ def make_info_card(avatar_path, title, lines, out_path):
         fill = line[2] if len(line) > 2 else "black"
         if not text:
             continue
+        # Bio/tên có thể chứa xuống dòng (vd: TikTok signature) — PIL
+        # textlength/draw.text không đo được text nhiều dòng, gộp thành 1 dòng.
+        text = str(text).replace("\r", " ").replace("\n", " ").strip()
+        if not text:
+            continue
         font = _font(size)
-        text = _fit_text(draw, str(text), font, TEXT_MAX_W)
+        text = _fit_text(draw, text, font, TEXT_MAX_W)
         draw.text((TEXT_X, y), text, font=font, fill=fill)
         y += int(size * 1.45)
 
