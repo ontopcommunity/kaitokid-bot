@@ -35,6 +35,18 @@ CREATE TABLE IF NOT EXISTS kk_funny (
     PRIMARY KEY (chat_id, user_id, command)
 );
 
+--- daily_usage: đếm số lượt dùng lệnh theo ngày (giờ VN).
+--- Dùng cho giới hạn lượt đánh giá (karma): người thường tối đa 10 lượt/ngày,
+--- chủ bot (SUDO) không giới hạn. Một dòng = 1 user + 1 lệnh + 1 ngày.
+CREATE TABLE IF NOT EXISTS kk_daily_usage (
+    chat_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    command TEXT NOT NULL,
+    day DATE NOT NULL,
+    count INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (chat_id, user_id, command, day)
+);
+
 -- gban: Mongo "gban" {user_id}
 CREATE TABLE IF NOT EXISTS kk_gban (
     user_id BIGINT PRIMARY KEY
