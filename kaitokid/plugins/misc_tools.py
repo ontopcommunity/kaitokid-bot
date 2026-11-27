@@ -325,70 +325,109 @@ async def showid(_, message):
 @app.on_message(filters.command(["laythongtin"], COMMAND_HANDLER))
 async def who_is(client, message):
     # https://github.com/SpEcHiDe/PyroGramBot/blob/master/pyrobot/plugins/admemes/whois.py#L19
-    if message.sender_chat:
-        return await message.reply_msg("Kênh không được hỗ trợ..")
-    status_message = await message.reply_text("`Đang lấy thông tin người dùng...`")
-    await status_message.edit("`Xử lý thông tin người dùng...`")
-    from_user = None
-    from_user_id, _ = extract_user(message)
+    # Hỗ trợ cả người lẫn kênh (không còn chặn sender_chat).
+    status_message = await message.reply_text("`Đang lấy thông tin...`")
+    # Xác định target: reply (người hoặc kênh) > tham số > người/kênh gửi lệnh.
+    target = None
+    if message.reply_to_message:
+        reply = message.reply_to_message
+        if reply.from_user:
+            target = reply.from_user.id
+        elif reply.sender_chat:
+            target = reply.sender_chat.id
+    if target is None:
+        args = message.text.strip().split()
+        if len(args) >= 2:
+            target = args[1].lstrip("@")
+    if target is None:
+        if message.from_user:
+            target = message.from_user.id
+        elif message.sender_chat:
+            target = message.sender_chat.id
+    if target is None:
+        return await status_message.edit("Không xác định được người/kênh.")
     try:
-        from_user = await client.get_users(from_user_id)
+        chat = await client.get_chat(target)
     except Exception as error:
         return await status_message.edit(str(error))
-    if from_user is None:
-        return await status_message.edit("Không có user_id/tin nhắn hợp lệ nào được chỉ định")
+    # Người có first_name, kênh/nhóm có title.
+    is_user = bool(getattr(chat, "first_name", None))
     message_out_str = ""
-    username = f"@{from_user.username}" or "<b>Không có tên người dùng</b>"
-    dc_id = from_user.dc_id or "<i>[Người dùng không có ảnh hồ sơ]</i>"
-    bio = (await client.get_chat(from_user.id)).bio
-    count_pic = await client.get_chat_photos_count(from_user.id)
-    message_out_str += f"<b>🔸 Họ:</b> {from_user.first_name}\n"
-    if last_name := from_user.last_name:
-        message_out_str += f"<b>🔹 Tên:</b> {last_name}\n"
-    message_out_str += f"<b>🆔 ID:</b> <code>{from_user.id}</code>\n"
-    message_out_str += f"<b>✴️ Tên người dùng:</b> {username}\n"
-    message_out_str += f"<b>💠 TT Dữ liệu:</b> <code>{dc_id}</code>\n"
-    if bio:
-        message_out_str += f"<b>👨🏿‍💻 Bio:</b> <code>{bio}</code>\n"
-    message_out_str += f"<b>📸 Ảnh:</b> {count_pic}\n"
-    message_out_str += f"<b>🧐 Hạn chế:</b> {from_user.is_restricted}\n"
-    message_out_str += f"<b>✅ Đã xác minh:</b> {from_user.is_verified}\n"
-    message_out_str += f"<b>🌐 Liên kết trang cá nhân:</b> <a href='tg://user?id={from_user.id}'><b>Bấm vào đây</b></a>\n"
-    if message.chat.type.value in (("supergroup", "channel")):
-        with contextlib.suppress(UserNotParticipant, ChatAdminRequired):
-            chat_member_p = await message.chat.get_member(from_user.id)
-            joined_date = chat_member_p.joined_date
-            message_out_str += (
-                "<b>➲Đã tham gia cuộc trò chuyện này vào:</b> <code>" f"{joined_date}" "</code>\n"
-            )
-    # Vẽ thẻ ảnh thông tin (cùng cơ chế welcomepic: nền bg.png, avatar tròn).
     avatar_path = None
-    if chat_photo := from_user.photo:
+    if chat.photo:
         try:
-            avatar_path = await client.download_media(message=chat_photo.big_file_id)
+            avatar_path = await client.download_media(message=chat.photo.big_file_id)
         except Exception:
             avatar_path = None
-    full_name = f"{from_user.first_name} {from_user.last_name or ''}".strip()
-    username_line = f"@{from_user.username}" if from_user.username else "Không có username"
+    if is_user:
+        # ---- Thông tin người dùng ----
+        full_name = f"{chat.first_name} {chat.last_name or ''}".strip()
+        username = f"@{chat.username}" if chat.username else "<b>Không có tên người dùng</b>"
+        dc_id = chat.dc_id or "<i>[Không có ảnh hồ sơ]</i>"
+        bio = getattr(chat, "bio", None)
+        try:
+            count_pic = await client.get_chat_photos_count(chat.id)
+        except Exception:
+            count_pic = 0
+        # is_verified / is_restricted chỉ có ở đối tượng User.
+        try:
+            u = await client.get_users(chat.id)
+            is_verified = u.is_verified
+            is_restricted = u.is_restricted
+        except Exception:
+            is_verified = False
+            is_restricted = False
+        message_out_str += f"<b>🔸 Họ:</b> {chat.first_name}\n"
+        if chat.last_name:
+            message_out_str += f"<b>🔹 Tên:</b> {chat.last_name}\n"
+        message_out_str += f"<b>🆔 ID:</b> <code>{chat.id}</code>\n"
+        message_out_str += f"<b>✴️ Tên người dùng:</b> {username}\n"
+        message_out_str += f"<b>💠 TT Dữ liệu:</b> <code>{dc_id}</code>\n"
+        if bio:
+            message_out_str += f"<b>👨🏿‍💻 Bio:</b> <code>{bio}</code>\n"
+        message_out_str += f"<b>📸 Ảnh:</b> {count_pic}\n"
+        message_out_str += f"<b>🧐 Hạn chế:</b> {is_restricted}\n"
+        message_out_str += f"<b>✅ Đã xác minh:</b> {is_verified}\n"
+        message_out_str += f"<b>🌐 Liên kết trang cá nhân:</b> <a href='tg://user?id={chat.id}'><b>Bấm vào đây</b></a>\n"
+        if message.chat.type.value in (("supergroup", "channel")):
+            with contextlib.suppress(UserNotParticipant, ChatAdminRequired):
+                chat_member_p = await message.chat.get_member(chat.id)
+                joined_date = chat_member_p.joined_date
+                message_out_str += (
+                    "<b>➲Đã tham gia cuộc trò chuyện này vào:</b> <code>" f"{joined_date}" "</code>\n"
+                )
+        card_name = full_name
+        card_file = f"downloads/info#{chat.id}.png"
+    else:
+        # ---- Thông tin kênh/nhóm ----
+        title = chat.title or "Kênh"
+        username = f"@{chat.username}" if chat.username else "Không có username"
+        try:
+            members = await client.get_chat_members_count(chat.id)
+        except Exception:
+            members = 0
+        message_out_str += f"<b>📢 Tên kênh:</b> {title}\n"
+        message_out_str += f"<b>🆔 ID:</b> <code>{chat.id}</code>\n"
+        message_out_str += f"<b>✴️ Tên người dùng:</b> {username}\n"
+        message_out_str += f"<b>👥 Thành viên:</b> {members}\n"
+        message_out_str += f"<b>📌 Loại:</b> {chat.type.value}\n"
+        if chat.description:
+            message_out_str += f"<b>📝 Mô tả:</b> <code>{chat.description}</code>\n"
+        if chat.username:
+            message_out_str += f"<b>🌐 Liên kết:</b> <a href='https://t.me/{chat.username}'><b>Bấm vào đây</b></a>\n"
+        card_name = title
+        card_file = f"downloads/info#{chat.id}.png"
+    # Vẽ thẻ ảnh đơn giản: chỉ avatar + tên đầy đủ.
     card_path = None
     try:
         card_path = await make_info_card(
             avatar_path,
-            "THÔNG TIN NGƯỜI DÙNG",
-            f"downloads/info#{from_user.id}.png",
+            "THÔNG TIN",
+            card_file,
             # Truyền vị trí, không dùng keyword: asyncify dùng
             # run_in_executor nên không nhận keyword argument.
             "info",
-            full_name,
-            username_line,
-            [
-                ("hash", str(from_user.id), "ID"),
-                ("globe", str(from_user.dc_id) if from_user.dc_id else "-", "DC"),
-                ("image", str(count_pic), "Ảnh"),
-            ],
-            bio or "",
-            f"{'Đã xác minh' if from_user.is_verified else 'Chưa xác minh'}"
-            f"  •  {'Bị hạn chế' if from_user.is_restricted else 'Không bị hạn chế'}",
+            card_name,
         )
     except Exception as e:
         LOGGER.warning("Không vẽ được thẻ info: %s", e)
@@ -396,10 +435,15 @@ async def who_is(client, message):
     caption_out = (
         "<blockquote expandable>" + message_out_str.strip() + "</blockquote>"
     )
+    closer_id = (
+        message.from_user.id
+        if message.from_user
+        else (message.sender_chat.id if message.sender_chat else 0)
+    )
     buttons = [
         [
             InlineKeyboardButton(
-                "🔐 Đóng", callback_data=f"close#{message.from_user.id}"
+                "🔐 Đóng", callback_data=f"close#{closer_id}"
             )
         ]
     ]
