@@ -370,33 +370,25 @@ async def who_is(client, message):
             avatar_path = None
     full_name = f"{from_user.first_name} {from_user.last_name or ''}".strip()
     username_line = f"@{from_user.username}" if from_user.username else "Không có username"
-    dc_line = (
-        f"DC: {from_user.dc_id}  •  Ảnh: {count_pic}"
-        if from_user.dc_id
-        else f"Ảnh: {count_pic}"
-    )
-    card_lines = [
-        (full_name, 32),
-        (f"{username_line}  •  ID: {from_user.id}", 28),
-        (dc_line, 26),
-        (f"Bio: {bio}" if bio else "", 24),
-        (
-            f"{'Đã xác minh' if from_user.is_verified else 'Chưa xác minh'}"
-            f"  •  {'Bị hạn chế' if from_user.is_restricted else 'Không bị hạn chế'}",
-            24,
-        ),
-    ]
-    card_lines = [ln for ln in card_lines if ln[0]]
     card_path = None
     try:
         card_path = await make_info_card(
             avatar_path,
             "THÔNG TIN NGƯỜI DÙNG",
-            card_lines,
             f"downloads/info#{from_user.id}.png",
             # Truyền vị trí, không dùng keyword: asyncify dùng
             # run_in_executor nên không nhận keyword argument.
             "info",
+            full_name,
+            username_line,
+            [
+                ("hash", str(from_user.id), "ID"),
+                ("globe", str(from_user.dc_id) if from_user.dc_id else "-", "DC"),
+                ("image", str(count_pic), "Ảnh"),
+            ],
+            bio or "",
+            f"{'Đã xác minh' if from_user.is_verified else 'Chưa xác minh'}"
+            f"  •  {'Bị hạn chế' if from_user.is_restricted else 'Không bị hạn chế'}",
         )
     except Exception as e:
         LOGGER.warning("Không vẽ được thẻ info: %s", e)
