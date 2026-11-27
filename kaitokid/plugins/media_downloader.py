@@ -649,7 +649,9 @@ async def tiktok_user_info(_, ctx: Message):
                 "THÔNG TIN TIKTOK",
                 card_lines,
                 str(tmp / f"tt_card_{unique_id}.png"),
-                style="tiktok",
+                # Truyền vị trí, không dùng keyword: asyncify dùng
+                # run_in_executor nên không nhận keyword argument.
+                "tiktok",
             )
         except Exception as e:
             LOGGER.warning("Không vẽ được thẻ TikTok: %s", e)
