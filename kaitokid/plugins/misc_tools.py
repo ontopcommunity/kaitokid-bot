@@ -359,6 +359,14 @@ async def who_is(client, message):
             avatar_path = await client.download_media(message=chat.photo.big_file_id)
         except Exception:
             avatar_path = None
+    if not avatar_path:
+        # Kênh đôi khi get_chat không trả photo: thử lấy ảnh trực tiếp.
+        try:
+            async for ph in client.get_chat_photos(chat.id, limit=1):
+                avatar_path = await client.download_media(ph)
+                break
+        except Exception:
+            avatar_path = None
     if is_user:
         # ---- Thông tin người dùng ----
         full_name = f"{chat.first_name} {chat.last_name or ''}".strip()
