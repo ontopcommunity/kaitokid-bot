@@ -16,6 +16,7 @@ inline "Mở link" dẫn tới link gốc.
 import asyncio
 import html
 import logging
+from logging import getLogger
 import os
 import re
 import shutil
