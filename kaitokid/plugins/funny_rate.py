@@ -1,13 +1,15 @@
 import random
 import logging
 from logging import getLogger
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from kaitokid import app
 from kaitokid.core.decorator.errors import capture_err
 from kaitokid.helper.functions import get_sender
-from kaitokid.vars import COMMAND_HANDLER
-from database.funny_db import can_use_command, update_user_command_usage
+from kaitokid.vars import COMMAND_HANDLER, SUDO, TZ
+from database.funny_db import get_daily_usage_count, increment_daily_usage
 
 LOGGER = getLogger("KaitoKid")
 
@@ -38,6 +40,46 @@ MEDIA = {
 # Nút hỗ trợ
 BUTTON = [[InlineKeyboardButton("Ủng Hộ", url="https://t.me/sharecongngheontop")]]
 
+# Giới hạn lượt đánh giá mỗi ngày (tính theo từng lệnh, theo giờ VN).
+# Chủ bot (SUDO) không giới hạn; người khác tối đa 10 lượt/ngày/lệnh.
+# Hết lượt: handler im lặng bỏ qua, bot không báo gì.
+RATE_LIMIT = 10
+
+
+def _rate_day():
+    """Ngày hiện tại theo múi giờ của bot (mặc định giờ VN)."""
+    return datetime.now(ZoneInfo(TZ)).date()
+
+
+async def _is_unlimited(ctx, user_id: int) -> bool:
+    """Admin không giới hạn lượt đánh giá: chủ bot (SUDO), admin nhóm,
+    và acc dùng kênh để nhắn (ID âm — đăng bằng kênh là đã có quyền admin
+    kênh đó nên cũng được miễn)."""
+    if user_id in SUDO:
+        return True
+    if user_id < 0:
+        # Kênh: không xác định được user đứng sau, mà đăng bằng kênh
+        # thì đã là admin kênh — miễn giới hạn.
+        return True
+    try:
+        member = await ctx.chat.get_member(user_id)
+        return member.status.value in ("administrator", "creator")
+    except Exception:
+        return False
+
+
+async def _can_rate(ctx, chat_id: int, user_id: int, command: str) -> bool:
+    if await _is_unlimited(ctx, user_id):
+        return True
+    count = await get_daily_usage_count(chat_id, user_id, command, _rate_day())
+    return count < RATE_LIMIT
+
+
+async def _record_rate(ctx, chat_id: int, user_id: int, command: str):
+    if await _is_unlimited(ctx, user_id):
+        return
+    await increment_daily_usage(chat_id, user_id, command, _rate_day())
+
 # Hàm chung để xử lý các lệnh
 async def handle_fun_command(ctx, command, caption_template, emoji):
     try:
@@ -53,12 +95,9 @@ async def handle_fun_command(ctx, command, caption_template, emoji):
         else:
             user_id, user_name = sender_id, get_sender(ctx)[1]
 
-        # Kiểm tra xem người gửi có thể sử dụng lệnh không
-        if not await can_use_command(chat_id, sender_id, command):
-            await ctx.reply_msg(
-                f"🚫 Bạn đã sử dụng lệnh /{command} hôm nay. Hãy thử lại vào ngày mai! 😊",
-                quote=True
-            )
+        # Giới hạn lượt đánh giá: admin (chủ bot, admin nhóm, acc dùng kênh)
+        # vô hạn; người khác tối đa 10 lượt/ngày. Hết lượt thì im lặng bỏ qua.
+        if not await _can_rate(ctx, chat_id, sender_id, command):
             return
 
         # Kênh có ID âm: không link tg://user được, chỉ hiện tên.
@@ -84,7 +123,7 @@ async def handle_fun_command(ctx, command, caption_template, emoji):
         )
 
         # Cập nhật dữ liệu sử dụng lệnh cho người gửi
-        await update_user_command_usage(chat_id, sender_id, command)
+        await _record_rate(ctx, chat_id, sender_id, command)
 
     except Exception as e:
         await ctx.reply_msg(f"Lỗi, vui lòng thử lại sau.", quote=True)
