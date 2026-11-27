@@ -35,6 +35,7 @@ from pyrogram.enums import ParseMode
 from kaitokid import BOT_USERNAME, app
 from kaitokid.core.decorator.errors import capture_err
 from kaitokid.helper.http import fetch
+from kaitokid.helper.image_cards import make_info_card
 from kaitokid.helper.tools import gen_trans_image, rentry
 from kaitokid.vars import COMMAND_HANDLER
 from utils import extract_user, get_file_id
@@ -57,7 +58,7 @@ __HELP__ = """
 
 /createqr [văn bản] - Chuyển đổi văn bản thành mã QR  
 
-/laythongtin - Lấy thông tin người dùng với ảnh và mô tả đầy đủ nếu người dùng đã thiết lập ảnh hồ sơ  
+/laythongtin - Lấy thông tin người dùng, trả về thẻ ảnh riêng (avatar + tên + ID + bio)
 
 /layid - Lấy ID người dùng đơn giản
 
@@ -360,39 +361,82 @@ async def who_is(client, message):
             message_out_str += (
                 "<b>➲Đã tham gia cuộc trò chuyện này vào:</b> <code>" f"{joined_date}" "</code>\n"
             )
+    # Vẽ thẻ ảnh thông tin (cùng cơ chế welcomepic: nền bg.png, avatar tròn).
+    avatar_path = None
     if chat_photo := from_user.photo:
-        local_user_photo = await client.download_media(message=chat_photo.big_file_id)
-        buttons = [
-            [
-                InlineKeyboardButton(
-                    "🔐 Đóng", callback_data=f"close#{message.from_user.id}"
-                )
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await message.reply_photo(
-            photo=local_user_photo,
-            quote=True,
-            reply_markup=reply_markup,
-            caption=message_out_str,
-            disable_notification=True,
+        try:
+            avatar_path = await client.download_media(message=chat_photo.big_file_id)
+        except Exception:
+            avatar_path = None
+    full_name = f"{from_user.first_name} {from_user.last_name or ''}".strip()
+    username_line = f"@{from_user.username}" if from_user.username else "Không có username"
+    dc_line = (
+        f"DC: {from_user.dc_id}  •  Ảnh: {count_pic}"
+        if from_user.dc_id
+        else f"Ảnh: {count_pic}"
+    )
+    card_lines = [
+        (full_name, 38),
+        (username_line, 30),
+        (f"ID: {from_user.id}", 28),
+        (dc_line, 28),
+        (f"Bio: {bio}" if bio else "", 26),
+        (
+            f"{'Đã xác minh' if from_user.is_verified else 'Chưa xác minh'}"
+            f"  •  {'Bị hạn chế' if from_user.is_restricted else 'Không bị hạn chế'}",
+            26,
+        ),
+    ]
+    card_lines = [ln for ln in card_lines if ln[0]]
+    card_path = None
+    try:
+        card_path = await make_info_card(
+            avatar_path,
+            "THÔNG TIN NGƯỜI DÙNG",
+            card_lines,
+            f"downloads/info#{from_user.id}.png",
         )
-        os.remove(local_user_photo)
-    else:
-        buttons = [
-            [
-                InlineKeyboardButton(
-                    "🔐 Đóng", callback_data=f"close#{message.from_user.id}"
-                )
-            ]
+    except Exception as e:
+        LOGGER.warning("Không vẽ được thẻ info: %s", e)
+    buttons = [
+        [
+            InlineKeyboardButton(
+                "🔐 Đóng", callback_data=f"close#{message.from_user.id}"
+            )
         ]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await message.reply_text(
-            text=message_out_str,
-            reply_markup=reply_markup,
-            quote=True,
-            disable_notification=True,
-        )
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    try:
+        if card_path:
+            await message.reply_photo(
+                photo=card_path,
+                quote=True,
+                reply_markup=reply_markup,
+                caption=message_out_str,
+                disable_notification=True,
+            )
+        elif avatar_path:
+            await message.reply_photo(
+                photo=avatar_path,
+                quote=True,
+                reply_markup=reply_markup,
+                caption=message_out_str,
+                disable_notification=True,
+            )
+        else:
+            await message.reply_text(
+                text=message_out_str,
+                reply_markup=reply_markup,
+                quote=True,
+                disable_notification=True,
+            )
+    finally:
+        for p in (avatar_path, card_path):
+            if p:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
     await status_message.delete_msg()
 
 
