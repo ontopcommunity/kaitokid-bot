@@ -41,9 +41,11 @@ __MODULE__ = "TảiNhạcVideo"
 __HELP__ = """
 <blockquote>🎵 <b>Tải nhạc & video bằng link</b>
 Dán link SoundCloud -> bot gửi file nhạc kèm tên bài + tác giả.
-Dán link TikTok -> bot gửi video kèm thông tin video.
-Dán link YouTube / Instagram / Facebook / X / ... -> bot gửi video (qua API studiointernet).
-<b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok.</blockquote>
+Dán link TikTok -> bot gửi video không watermark kèm thông tin video.
+Dán link YouTube / Facebook / Instagram / X / ... -> bot gửi video chất lượng cao.
+<b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok.
+
+Mọi lệnh đều chạy được với cả 3 đầu / . ! (ví dụ: /tiktok, .tiktok, !tiktok).</blockquote>
 """
 
 APISYNTHESIS_BASE = "https://apisynthesis.vercel.app/api"
