@@ -674,22 +674,10 @@ async def tiktok_user_info(_, ctx: Message):
                 str(tmp / f"tt_card_{unique_id}.png"),
                 # Truyền vị trí, không dùng keyword: asyncify dùng
                 # run_in_executor nên không nhận keyword argument.
+                # Thẻ đơn giản: chỉ avatar + tên + username.
                 "tiktok",
                 nickname or unique_id,
                 f"@{unique_id}",
-                [
-                    ("users", _fmt_num(sr.get("follower")), "Follower"),
-                    ("user", _fmt_num(sr.get("following")), "Follow"),
-                    ("heart", _fmt_num(sr.get("heart")), "Tim"),
-                    ("play", _fmt_num(sr.get("video")), "Video"),
-                ],
-                # Thẻ ảnh: bio kèm bioLink để _extract_link tách link ra dòng riêng.
-                (sig + " " + bio_link).strip()
-                if bio_link and bio_link not in sig
-                else sig,
-                f"Khu vực: {a.get('region')}"
-                if a.get("region")
-                else ("Đang livestream" if live.get("is_live") else ""),
             )
         except Exception as e:
             LOGGER.warning("Không vẽ được thẻ TikTok: %s", e)
