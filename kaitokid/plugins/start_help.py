@@ -24,6 +24,12 @@ home_keyboard_pm = InlineKeyboardMarkup(
             InlineKeyboardButton(text="Các lệnh sử dụng ❓", callback_data="bot_commands"),
         ],
         [
+            InlineKeyboardButton(
+                text="🎵 Tải nhạc & video",
+                callback_data="help_module(tảinhạcvideo)",
+            ),
+        ],
+        [
             InlineKeyboardButton(text="Liên hệ admin 👨", url="https://t.me/ontopdz2k9"),
         ],
         [
