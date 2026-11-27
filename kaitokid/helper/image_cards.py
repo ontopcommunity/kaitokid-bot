@@ -10,10 +10,19 @@ Mỗi lệnh có ảnh nền riêng (không dùng chung bg.png):
 """
 
 import os
+import unicodedata
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from kaitokid.core.decorator import asyncify
+
+
+def _normalize_text(text):
+    """Chuyển ký tự 'trang trí' (vd: tên dùng chữ toán học 𝙈𝙄𝙉𝙃) về
+    chữ thường để font vẽ được; tiếng Việt có dấu giữ nguyên."""
+    return unicodedata.normalize(
+        "NFC", unicodedata.normalize("NFKD", str(text))
+    )
 
 FONT_PATH = "assets/MarkaziText-Bold.ttf"
 FALLBACK_FONT = "assets/DejaVuSans-Bold.ttf"
@@ -94,7 +103,7 @@ def make_info_card(avatar_path, title, lines, out_path, style="info"):
     draw = ImageDraw.Draw(bg)
 
     # Tiêu đề ở banner trên (căn giữa).
-    _draw_centered(draw, title, _font(st["title_size"]), st["title_y"],
+    _draw_centered(draw, _normalize_text(title), _font(st["title_size"]), st["title_y"],
                    center_x, fill=st["title_fill"])
 
     # Avatar tròn ở giữa panel.
@@ -116,7 +125,8 @@ def make_info_card(avatar_path, title, lines, out_path, style="info"):
             continue
         # Bio/tên có thể chứa xuống dòng (vd: TikTok signature) — PIL
         # textlength/draw.text không đo được text nhiều dòng, gộp thành 1 dòng.
-        text = str(text).replace("\r", " ").replace("\n", " ").strip()
+        # Đồng thời chuẩn hoá ký tự trang trí (vd: 𝙈𝙄𝙉𝙃) về chữ thường.
+        text = _normalize_text(text).replace("\r", " ").replace("\n", " ").strip()
         if not text:
             continue
         font = _font(size)
