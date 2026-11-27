@@ -12,7 +12,7 @@ LOGGER = getLogger("KaitoKid")
 
 __MODULE__ = "ThửCode"
 __HELP__ = """
-Tính năng này cho phép bạn chạy nhiều ngôn ngữ lập trình thông qua bot này thông qua api Glot.io. Sau đây là danh sách các ngôn ngữ được hỗ trợ, chỉ hỗ trợ các lệnh tạm thời với dấu "!" như ví dụ bên dưới.
+Tính năng này cho phép bạn chạy nhiều ngôn ngữ lập trình thông qua bot này thông qua api Glot.io. Sau đây là danh sách các ngôn ngữ được hỗ trợ, chạy bằng / , . hoặc ! như ví dụ bên dưới.
 
 <blockquote>Danh sách các ngôn ngữ lập trình được hỗ trợ:
 ~> assembly
@@ -86,8 +86,8 @@ async def list_lang(_, message):
     )
 
 
-@app.on_message(filters.command(["assembly"], "!"))
-@app.on_edited_message(filters.command(["assembly"], "!"))
+@app.on_message(filters.command(["assembly"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["assembly"], COMMAND_HANDLER))
 async def assembly(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -103,8 +103,8 @@ async def assembly(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["ats"], "!"))
-@app.on_edited_message(filters.command(["ats"], "!"))
+@app.on_message(filters.command(["ats"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["ats"], COMMAND_HANDLER))
 async def ats(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -120,8 +120,8 @@ async def ats(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["bash"], "!"))
-@app.on_edited_message(filters.command(["bash"], "!"))
+@app.on_message(filters.command(["bash"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["bash"], COMMAND_HANDLER))
 async def bash(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -137,8 +137,8 @@ async def bash(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["c"], "!"))
-@app.on_edited_message(filters.command(["c"], "!"))
+@app.on_message(filters.command(["c"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["c"], COMMAND_HANDLER))
 async def c(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -154,8 +154,8 @@ async def c(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["clojure"], "!"))
-@app.on_edited_message(filters.command(["clojure"], "!"))
+@app.on_message(filters.command(["clojure"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["clojure"], COMMAND_HANDLER))
 async def clojure(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -171,8 +171,8 @@ async def clojure(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["cobol"], "!"))
-@app.on_edited_message(filters.command(["cobol"], "!"))
+@app.on_message(filters.command(["cobol"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["cobol"], COMMAND_HANDLER))
 async def cobol(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -188,8 +188,8 @@ async def cobol(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["coffeescript"], "!"))
-@app.on_edited_message(filters.command(["coffeescript"], "!"))
+@app.on_message(filters.command(["coffeescript"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["coffeescript"], COMMAND_HANDLER))
 async def coffeescript(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -205,8 +205,8 @@ async def coffeescript(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["cpp"], "!"))
-@app.on_edited_message(filters.command(["cpp"], "!"))
+@app.on_message(filters.command(["cpp"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["cpp"], COMMAND_HANDLER))
 async def cpp(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -222,8 +222,8 @@ async def cpp(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["crystal"], "!"))
-@app.on_edited_message(filters.command(["crystal"], "!"))
+@app.on_message(filters.command(["crystal"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["crystal"], COMMAND_HANDLER))
 async def crystal(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -239,8 +239,8 @@ async def crystal(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["csharp"], "!"))
-@app.on_edited_message(filters.command(["csharp"], "!"))
+@app.on_message(filters.command(["csharp"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["csharp"], COMMAND_HANDLER))
 async def csharp(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -256,8 +256,8 @@ async def csharp(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["d"], "!"))
-@app.on_edited_message(filters.command(["d"], "!"))
+@app.on_message(filters.command(["d"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["d"], COMMAND_HANDLER))
 async def d(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -273,8 +273,8 @@ async def d(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["elixir"], "!"))
-@app.on_edited_message(filters.command(["elixir"], "!"))
+@app.on_message(filters.command(["elixir"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["elixir"], COMMAND_HANDLER))
 async def elixir(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -290,8 +290,8 @@ async def elixir(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["elm"], "!"))
-@app.on_edited_message(filters.command(["elm"], "!"))
+@app.on_message(filters.command(["elm"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["elm"], COMMAND_HANDLER))
 async def elm(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -307,8 +307,8 @@ async def elm(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["erlang"], "!"))
-@app.on_edited_message(filters.command(["erlang"], "!"))
+@app.on_message(filters.command(["erlang"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["erlang"], COMMAND_HANDLER))
 async def erlang(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -324,8 +324,8 @@ async def erlang(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["fsharp"], "!"))
-@app.on_edited_message(filters.command(["fsharp"], "!"))
+@app.on_message(filters.command(["fsharp"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["fsharp"], COMMAND_HANDLER))
 async def fsharp(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -341,8 +341,8 @@ async def fsharp(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["go"], "!"))
-@app.on_edited_message(filters.command(["go"], "!"))
+@app.on_message(filters.command(["go"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["go"], COMMAND_HANDLER))
 async def go(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -358,8 +358,8 @@ async def go(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["groovy"], "!"))
-@app.on_edited_message(filters.command(["groovy"], "!"))
+@app.on_message(filters.command(["groovy"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["groovy"], COMMAND_HANDLER))
 async def groovy(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -375,8 +375,8 @@ async def groovy(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["haskell"], "!"))
-@app.on_edited_message(filters.command(["haskell"], "!"))
+@app.on_message(filters.command(["haskell"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["haskell"], COMMAND_HANDLER))
 async def haskell(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -392,8 +392,8 @@ async def haskell(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["idris"], "!"))
-@app.on_edited_message(filters.command(["idris"], "!"))
+@app.on_message(filters.command(["idris"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["idris"], COMMAND_HANDLER))
 async def idris(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -409,8 +409,8 @@ async def idris(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["java"], "!"))
-@app.on_edited_message(filters.command(["java"], "!"))
+@app.on_message(filters.command(["java"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["java"], COMMAND_HANDLER))
 async def java(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -426,8 +426,8 @@ async def java(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["javascript"], "!"))
-@app.on_edited_message(filters.command(["javascript"], "!"))
+@app.on_message(filters.command(["javascript"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["javascript"], COMMAND_HANDLER))
 async def javascript(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -443,8 +443,8 @@ async def javascript(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["julia"], "!"))
-@app.on_edited_message(filters.command(["julia"], "!"))
+@app.on_message(filters.command(["julia"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["julia"], COMMAND_HANDLER))
 async def julia(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -460,8 +460,8 @@ async def julia(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["kotlin"], "!"))
-@app.on_edited_message(filters.command(["kotlin"], "!"))
+@app.on_message(filters.command(["kotlin"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["kotlin"], COMMAND_HANDLER))
 async def kotlin(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -477,8 +477,8 @@ async def kotlin(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["lua"], "!"))
-@app.on_edited_message(filters.command(["lua"], "!"))
+@app.on_message(filters.command(["lua"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["lua"], COMMAND_HANDLER))
 async def lua(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -494,8 +494,8 @@ async def lua(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["mercury"], "!"))
-@app.on_edited_message(filters.command(["mercury"], "!"))
+@app.on_message(filters.command(["mercury"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["mercury"], COMMAND_HANDLER))
 async def mercury(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -511,8 +511,8 @@ async def mercury(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["nim"], "!"))
-@app.on_edited_message(filters.command(["nim"], "!"))
+@app.on_message(filters.command(["nim"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["nim"], COMMAND_HANDLER))
 async def nim(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -528,8 +528,8 @@ async def nim(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["nix"], "!"))
-@app.on_edited_message(filters.command(["nix"], "!"))
+@app.on_message(filters.command(["nix"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["nix"], COMMAND_HANDLER))
 async def nix(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -545,8 +545,8 @@ async def nix(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["ocaml"], "!"))
-@app.on_edited_message(filters.command(["ocaml"], "!"))
+@app.on_message(filters.command(["ocaml"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["ocaml"], COMMAND_HANDLER))
 async def ocaml(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -562,8 +562,8 @@ async def ocaml(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["perl"], "!"))
-@app.on_edited_message(filters.command(["perl"], "!"))
+@app.on_message(filters.command(["perl"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["perl"], COMMAND_HANDLER))
 async def perl(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -579,8 +579,8 @@ async def perl(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["php"], "!"))
-@app.on_edited_message(filters.command(["php"], "!"))
+@app.on_message(filters.command(["php"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["php"], COMMAND_HANDLER))
 async def php(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -596,8 +596,8 @@ async def php(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["python"], "!"))
-@app.on_edited_message(filters.command(["python"], "!"))
+@app.on_message(filters.command(["python"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["python"], COMMAND_HANDLER))
 async def python(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -613,8 +613,8 @@ async def python(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["raku"], "!"))
-@app.on_edited_message(filters.command(["raku"], "!"))
+@app.on_message(filters.command(["raku"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["raku"], COMMAND_HANDLER))
 async def raku(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -630,8 +630,8 @@ async def raku(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["ruby"], "!"))
-@app.on_edited_message(filters.command(["ruby"], "!"))
+@app.on_message(filters.command(["ruby"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["ruby"], COMMAND_HANDLER))
 async def ruby(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -647,8 +647,8 @@ async def ruby(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["rust"], "!"))
-@app.on_edited_message(filters.command(["rust"], "!"))
+@app.on_message(filters.command(["rust"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["rust"], COMMAND_HANDLER))
 async def rust(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -664,8 +664,8 @@ async def rust(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["scala"], "!"))
-@app.on_edited_message(filters.command(["scala"], "!"))
+@app.on_message(filters.command(["scala"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["scala"], COMMAND_HANDLER))
 async def scala(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -681,8 +681,8 @@ async def scala(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["swift"], "!"))
-@app.on_edited_message(filters.command(["swift"], "!"))
+@app.on_message(filters.command(["swift"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["swift"], COMMAND_HANDLER))
 async def swift(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
@@ -698,8 +698,8 @@ async def swift(_, message):
         return await message.reply(e, parse_mode=enums.ParseMode.DISABLED)
 
 
-@app.on_message(filters.command(["typescript"], "!"))
-@app.on_edited_message(filters.command(["typescript"], "!"))
+@app.on_message(filters.command(["typescript"], COMMAND_HANDLER))
+@app.on_edited_message(filters.command(["typescript"], COMMAND_HANDLER))
 async def typescript(_, message):
     if len(message.command) < 2:
         return await message.reply("Vui lòng nhập mã bạn muốn chạy.")
