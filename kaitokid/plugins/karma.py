@@ -15,10 +15,9 @@ from database.karma_db import (
     reset_all_karma,
 )
 from kaitokid import app
-from kaitokid.vars import COMMAND_HANDLER
 from kaitokid.core.decorator.errors import capture_err
 from kaitokid.core.decorator.permissions import adminsOnly
-from kaitokid.helper.functions import alpha_to_int, int_to_alpha
+from kaitokid.helper.functions import alpha_to_int, get_sender, int_to_alpha
 
 LOGGER = getLogger("KaitoKid")
 
@@ -90,18 +89,19 @@ async def auto_delete_message(message, delay=120):
 async def upvote(_, message):
     if not await is_karma_on(message.chat.id):
         return
-    if not message.reply_to_message.from_user:
+    # Người vote và người được vote đều có thể là acc thường, bot, kênh.
+    voter_id, _ = get_sender(message)
+    target_id, target_name = get_sender(message.reply_to_message)
+    if voter_id is None or target_id is None:
         return
-    if not message.from_user:
+    if message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
         return
-    if message.reply_to_message.from_user.is_bot:
-        return
-    if message.reply_to_message.from_user.id == message.from_user.id:
+    if target_id == voter_id:
         return
 
     chat_id = message.chat.id
-    user_id = message.reply_to_message.from_user.id
-    user_mention = message.reply_to_message.from_user.mention
+    user_id = target_id
+    user_mention = target_name if target_id < 0 else message.reply_to_message.from_user.mention
 
     current_karma = await get_karma(chat_id, await int_to_alpha(user_id))
     if current_karma:
@@ -134,18 +134,19 @@ async def upvote(_, message):
 async def downvote(_, message):
     if not await is_karma_on(message.chat.id):
         return
-    if not message.reply_to_message.from_user:
+    # Người vote và người được vote đều có thể là acc thường, bot, kênh.
+    voter_id, _ = get_sender(message)
+    target_id, target_name = get_sender(message.reply_to_message)
+    if voter_id is None or target_id is None:
         return
-    if not message.from_user:
+    if message.reply_to_message.from_user and message.reply_to_message.from_user.is_bot:
         return
-    if message.reply_to_message.from_user.is_bot:
-        return
-    if message.reply_to_message.from_user.id == message.from_user.id:
+    if target_id == voter_id:
         return
 
     chat_id = message.chat.id
-    user_id = message.reply_to_message.from_user.id
-    user_mention = message.reply_to_message.from_user.mention
+    user_id = target_id
+    user_mention = target_name if target_id < 0 else message.reply_to_message.from_user.mention
 
     current_karma = await get_karma(chat_id, await int_to_alpha(user_id))
     if current_karma:
@@ -164,7 +165,7 @@ async def downvote(_, message):
     # Xoá tin nhắn sau 1 phút
     await auto_delete_message(response_message, 120)
 
-@app.on_message(filters.command("fame_rank", COMMAND_HANDLER) & filters.group)
+@app.on_message(filters.command("fame_rank") & filters.group)
 @adminsOnly("can_delete_messages")  # Thêm bộ lọc quyền admin
 @capture_err
 async def command_karma(_, message):
@@ -208,7 +209,7 @@ async def command_karma(_, message):
     # Xoá tin nhắn sau 120 giây
     await auto_delete_message(response_message, 120)
 
-@app.on_message(filters.command("fame_reset", COMMAND_HANDLER) & ~filters.private)
+@app.on_message(filters.command("fame_reset") & ~filters.private)
 @adminsOnly("can_change_info")
 async def karma_reset(_, message):
     usage = "**Cách sử dụng:**\n/fame_reset"
@@ -221,7 +222,7 @@ async def karma_reset(_, message):
     
     await message.reply_text("Tất cả điểm danh tiếng đã được đặt lại cho nhóm này.")
 
-@app.on_message(filters.command("fame_toggle", COMMAND_HANDLER) & ~filters.private)
+@app.on_message(filters.command("fame_toggle") & ~filters.private)
 @adminsOnly("can_change_info")
 async def fame_toggle(_, message):
     usage = "**Cách sử dụng:**\n/fame_toggle [On/Off]"
@@ -242,7 +243,7 @@ async def fame_toggle(_, message):
         await message.reply_text(usage)
 
 				
-@app.on_message(filters.command("fame_set", COMMAND_HANDLER) & filters.group)
+@app.on_message(filters.command("fame_set") & filters.group)
 @adminsOnly("can_change_info")
 async def set_fame(_, message):
     usage = "**Cách sử dụng:**\n/fame_set [số điểm]"
@@ -279,7 +280,7 @@ async def set_fame(_, message):
     response_message = await message.reply_text(f"Điểm danh tiếng của thành viên đã được đặt thành {karma} điểm.")
     await auto_delete_message(response_message, 120)
 		
-@app.on_message(filters.command("fame", COMMAND_HANDLER) & filters.group)
+@app.on_message(filters.command("fame") & filters.group)
 @capture_err
 async def fame(_, message):
     chat_id = message.chat.id
