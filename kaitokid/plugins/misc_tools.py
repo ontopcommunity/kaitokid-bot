@@ -376,15 +376,14 @@ async def who_is(client, message):
         else f"Ảnh: {count_pic}"
     )
     card_lines = [
-        (full_name, 38),
-        (username_line, 30),
-        (f"ID: {from_user.id}", 28),
-        (dc_line, 28),
-        (f"Bio: {bio}" if bio else "", 26),
+        (full_name, 32),
+        (f"{username_line}  •  ID: {from_user.id}", 28),
+        (dc_line, 26),
+        (f"Bio: {bio}" if bio else "", 24),
         (
             f"{'Đã xác minh' if from_user.is_verified else 'Chưa xác minh'}"
             f"  •  {'Bị hạn chế' if from_user.is_restricted else 'Không bị hạn chế'}",
-            26,
+            24,
         ),
     ]
     card_lines = [ln for ln in card_lines if ln[0]]
@@ -395,6 +394,7 @@ async def who_is(client, message):
             "THÔNG TIN NGƯỜI DÙNG",
             card_lines,
             f"downloads/info#{from_user.id}.png",
+            style="info",
         )
     except Exception as e:
         LOGGER.warning("Không vẽ được thẻ info: %s", e)
