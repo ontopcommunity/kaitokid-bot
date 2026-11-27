@@ -13,6 +13,7 @@ from httpx import AsyncClient, Timeout
 from pyrogram import filters, enums
 from pyrogram.types import Message
 from kaitokid import app
+from kaitokid.vars import COMMAND_HANDLER
 
 LOGGER = getLogger("KaitoKid")
 
@@ -303,7 +304,7 @@ async def delete_after_delay(message: Message, seconds: int):
     await asyncio.sleep(seconds)
     await message.delete()
 
-@app.on_message(filters.command(["q", "r"]) & filters.reply)
+@app.on_message(filters.command(["q", "r"], COMMAND_HANDLER) & filters.reply)
 async def msg_quotly_cmd(client: app, message: Message):
     """Handle /q and /r commands to generate quote stickers."""
     if message.chat.type != enums.ChatType.GROUP and message.chat.type != enums.ChatType.SUPERGROUP:
