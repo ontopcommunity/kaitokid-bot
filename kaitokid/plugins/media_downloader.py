@@ -628,30 +628,25 @@ async def tiktok_user_info(_, ctx: Message):
                 avatar_path = tmp / f"tt_avatar_{unique_id}.jpg"
                 async with aiohttp.ClientSession() as session:
                     await _download_file(session, avatar, avatar_path)
-            card_lines = [
-                (nickname or unique_id, 26),
-                (f"@{unique_id}", 24),
-                (
-                    f"Follower: {_fmt_num(sr.get('follower'))}"
-                    f"  •  Follow: {_fmt_num(sr.get('following'))}",
-                    22,
-                ),
-                (
-                    f"Tim: {_fmt_num(sr.get('heart'))}"
-                    f"  •  Video: {_fmt_num(sr.get('video'))}",
-                    22,
-                ),
-                (f"Bio: {a.get('signature')}" if a.get("signature") else "", 20),
-            ]
-            card_lines = [ln for ln in card_lines if ln[0]]
             card_path = await make_info_card(
                 str(avatar_path) if avatar_path and avatar_path.exists() else None,
                 "THÔNG TIN TIKTOK",
-                card_lines,
                 str(tmp / f"tt_card_{unique_id}.png"),
                 # Truyền vị trí, không dùng keyword: asyncify dùng
                 # run_in_executor nên không nhận keyword argument.
                 "tiktok",
+                nickname or unique_id,
+                f"@{unique_id}",
+                [
+                    ("users", _fmt_num(sr.get("follower")), "Follower"),
+                    ("user", _fmt_num(sr.get("following")), "Follow"),
+                    ("heart", _fmt_num(sr.get("heart")), "Tim"),
+                    ("play", _fmt_num(sr.get("video")), "Video"),
+                ],
+                a.get("signature") or "",
+                f"Khu vực: {a.get('region')}"
+                if a.get("region")
+                else ("Đang livestream" if live.get("is_live") else ""),
             )
         except Exception as e:
             LOGGER.warning("Không vẽ được thẻ TikTok: %s", e)
