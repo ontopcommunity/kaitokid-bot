@@ -201,31 +201,61 @@ async def _handle_soundcloud(msg: Message, url: str):
     tmp = _tmpdir()
     audio_path = None
     try:
-        async with aiohttp.ClientSession() as session:
-            data = await _fetch_json(
-                session, APISYNTHESIS_BASE, params={"url": url}
-            )
-        if data.get("error") or data.get("type") != "track":
-            await status.edit_text(
-                "❌ Không lấy được bài này. Kiểm tra lại link SoundCloud nhé."
-            )
-            return
-        title = data.get("title") or "Untitled"
-        author = data.get("author") or "Unknown artist"
-        duration = _fmt_duration(data.get("duration") or 0)
-        permalink = data.get("permalink_url") or url
-        thumb = data.get("thumbnail") or ""
+        # API apisynthesis thỉnh thoảng lỗi "No ClientID" (do cào client_id
+        # từ soundcloud.com), thử lại tối đa 3 lần.
+        data = None
+        last_err = None
+        for attempt in range(3):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    data = await _fetch_json(
+                        session, APISYNTHESIS_BASE, params={"url": url}
+                    )
+                if data.get("type") == "track" and not data.get("error"):
+                    break
+                last_err = data.get("error") or "Không phải track"
+                data = None
+            except Exception as e:
+                last_err = str(e)
+                data = None
+            if attempt < 2:
+                await asyncio.sleep(2)
+
+        title = author = permalink = thumb = None
+        duration = ""
+        if data:
+            title = data.get("title") or "Untitled"
+            author = data.get("author") or "Unknown artist"
+            duration = _fmt_duration(data.get("duration") or 0)
+            permalink = data.get("permalink_url") or url
+            thumb = data.get("thumbnail") or ""
 
         # Tải nhạc bằng yt-dlp (link HLS của API bị mã hóa, không tải trực tiếp được).
-        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", f"{author}-{title}")[:60]
+        safe = re.sub(
+            r"[^A-Za-z0-9_-]+", "_", f"{author or 'sc'}-{title or 'track'}"
+        )[:60]
         outtmpl = str(tmp / f"sc_{safe}.%(ext)s")
+        info = None
         try:
-            audio_path, _info = await asyncio.to_thread(
+            audio_path, info = await asyncio.to_thread(
                 _ytdlp_download, url, outtmpl, True
             )
         except Exception as e:
             LOGGER.warning("yt-dlp SoundCloud fail: %s", e)
             audio_path = None
+
+        # Nếu API lỗi mà yt-dlp tải được thì lấy info từ yt-dlp.
+        if not data and info:
+            title = info.get("title") or "Untitled"
+            author = info.get("uploader") or info.get("artist") or "Unknown artist"
+            duration = _fmt_duration(info.get("duration") or 0)
+            permalink = info.get("webpage_url") or url
+            thumb = info.get("thumbnail") or ""
+        if not data and not info:
+            await status.edit_text(
+                "❌ Không lấy được bài này. Kiểm tra lại link SoundCloud nhé."
+            )
+            return
 
         caption = (
             "<blockquote>"
@@ -363,7 +393,6 @@ async def tiktok_user_info(_, ctx: Message):
                 "❌ Không tìm thấy tài khoản này. Kiểm tra lại username nhé."
             )
         a = data["author"]
-        sf = data.get("stats_formatted") or {}
         sr = data.get("stats_raw") or {}
         live = data.get("live_info") or {}
         nickname = a.get("nickname") or ""
@@ -374,10 +403,10 @@ async def tiktok_user_info(_, ctx: Message):
             f"👤 <b>{_esc(nickname)}</b>{verified}\n"
             f"🆔 @{_esc(unique_id)}\n"
             + (f"📝 {_esc(a.get('signature'))}\n" if a.get("signature") else "")
-            + f"👥 Follower: <b>{_esc(sf.get('follower') or _fmt_num(sr.get('follower')))}</b>"
-            f"  •  Đang follow: {_esc(sf.get('following') or _fmt_num(sr.get('following')))}\n"
-            + f"❤️ {_esc(sf.get('heart') or _fmt_num(sr.get('heart')))}"
-            f"  •  🎬 {_esc(sf.get('video') or _fmt_num(sr.get('video')))} video\n"
+            + f"👥 Follower: <b>{_fmt_num(sr.get('follower'))}</b>"
+            f"  •  Đang follow: {_fmt_num(sr.get('following'))}\n"
+            + f"❤️ {_fmt_num(sr.get('heart'))}"
+            f"  •  🎬 {_fmt_num(sr.get('video'))} video\n"
             + (f"🌍 Khu vực: {_esc(a.get('region'))}\n" if a.get("region") else "")
             + (f"🔴 Đang livestream\n" if live.get("is_live") else "")
             + "📥 Nguồn: TikTok"
