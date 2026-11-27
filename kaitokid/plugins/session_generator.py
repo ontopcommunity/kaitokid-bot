@@ -52,16 +52,16 @@ gen_button = [
 
 
 async def is_batal(msg):
-    if msg.text == "/cancel":
+    if msg.text in ("/cancel", "!cancel", ".cancel"):
         await msg.reply(
             "**» Cancelled the ongoing string session generation process !**",
             quote=True,
             reply_markup=InlineKeyboardMarkup(gen_button),
         )
         return True
-    elif msg.text == "/skip":
+    elif msg.text in ("/skip", "!skip", ".skip"):
         return False
-    elif msg.text.startswith("/"):  # Bot Commands
+    elif msg.text.startswith(tuple(COMMAND_HANDLER)):  # Bot Commands
         await msg.reply(
             "**» Cancelled the ongoing string session generation process !**",
             quote=True,
