@@ -43,3 +43,4 @@ lxml_html_clean
 python-multipart
 standard-imghdr
 dnspython
+yt-dlp
