@@ -34,6 +34,7 @@ from pyrogram.enums import ParseMode
 
 from kaitokid import BOT_USERNAME, app
 from kaitokid.core.decorator.errors import capture_err
+from kaitokid.helper.functions import get_sender
 from kaitokid.helper.http import fetch
 from kaitokid.helper.image_cards import make_info_card
 from kaitokid.helper.tools import gen_trans_image, rentry
@@ -288,10 +289,17 @@ async def showid(_, message):
     chat_type = message.chat.type.value
     if chat_type == "private":
         user_id = message.chat.id
-        first = message.from_user.first_name
-        last = message.from_user.last_name or ""
-        username = message.from_user.username
-        dc_id = message.from_user.dc_id or ""
+        sender_id, sender_name = get_sender(message)
+        if message.from_user:
+            first = message.from_user.first_name
+            last = message.from_user.last_name or ""
+            username = message.from_user.username
+            dc_id = message.from_user.dc_id or ""
+        else:
+            first = sender_name or ""
+            last = ""
+            username = None
+            dc_id = ""
         await message.reply_text(
             f"<b>➲ Họ:</b> {first}\n<b>➲ Tên:</b> {last}\n<b>➲ Tên người dùng:</b> {username}\n<b>➲ Telegram ID:</b> <code>{user_id}</code>\n<b>➲ TT Dữ liệu:</b> <code>{dc_id}</code>",
             quote=True,
@@ -496,7 +504,8 @@ async def who_is(client, message):
 @app.on_callback_query(filters.regex("^close"))
 async def close_callback(_, query: CallbackQuery):
     _, userid = query.data.split("#")
-    if query.from_user.id != int(userid):
+    # userid âm = lệnh gửi từ kênh: ai cũng được đóng (không có user cụ thể).
+    if int(userid) >= 0 and query.from_user.id != int(userid):
         with contextlib.suppress(QueryIdInvalid):
             return await query.answer("⚠️ Truy cập bị từ chối!", True)
     with contextlib.redirect_stdout(Exception):
