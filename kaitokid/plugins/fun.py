@@ -48,7 +48,7 @@ async def beriharapan(c, m):
 
 
 @app.on_message(filters.command("react", COMMAND_HANDLER) & filters.user(SUDO))
-@user.on_message(filters.command("react", "."))
+@user.on_message(filters.command("react", COMMAND_HANDLER))
 async def givereact(c, m):
     if len(m.command) == 1:
         return await m.reply(
@@ -79,7 +79,7 @@ async def reaction_update(self, ctx):
 GIF_PATH = "/www/wwwroot/tiensi-teo-bot/assets/tungxu.gif"
 
 # Hàm xử lý khi người dùng gõ lệnh /coin
-@app.on_message(filters.command("tungxu"))
+@app.on_message(filters.command("tungxu", COMMAND_HANDLER))
 async def coin_flip_command(client, message):
     user_id = message.from_user.id
     
