@@ -46,7 +46,7 @@ STYLES = {
     "info": {
         "bg": "assets/bg_info.png",
         "canvas": (1024, 683),
-        "center_x": 477,
+        "center_x": 512,
         "title_y": 40, "title_size": 38, "title_fill": "black",
         "avatar_size": 250, "avatar_y": 205,
         "name_size": 32, "name_gap": 14,
@@ -65,7 +65,7 @@ STYLES = {
     "tiktok": {
         "bg": "assets/bg_tiktok.png",
         "canvas": (1024, 512),
-        "center_x": 490,
+        "center_x": 512,
         "title_y": 38, "title_size": 36, "title_fill": "white",
         "avatar_size": 160, "avatar_y": 140,
         "name_size": 28, "name_gap": 12,
