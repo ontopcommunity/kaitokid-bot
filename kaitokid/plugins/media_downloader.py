@@ -121,6 +121,33 @@ def _fmt_duration(ms_or_s):
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
+def _fmt_date(ts):
+    """Unix timestamp -> DD/MM/YYYY (giờ VN). Trả về "" nếu không có."""
+    try:
+        ts = int(ts)
+    except (TypeError, ValueError):
+        return ""
+    if ts <= 0:
+        return ""
+    try:
+        from datetime import datetime, timezone
+        from zoneinfo import ZoneInfo
+        dt = datetime.fromtimestamp(ts, tz=ZoneInfo("Asia/Ho_Chi_Minh"))
+        return dt.strftime("%d/%m/%Y")
+    except Exception:
+        return ""
+
+
+def _bio_link(a):
+    """Link bio của TikTok: ưu tiên field bioLink, fallback URL trong signature."""
+    link = (a.get("bioLink") or "").strip()
+    if link:
+        return link
+    sig = a.get("signature") or ""
+    m = re.search(r"https?://\S+|www\.\S+", sig)
+    return m.group(0) if m else ""
+
+
 def _fmt_num(n):
     """1.234.567 -> 1,2M / 3,4K cho gọn."""
     try:
@@ -307,10 +334,11 @@ async def _handle_soundcloud(msg: Message, url: str):
                 thumb_path = None
 
         caption = (
-            "<blockquote>"
+            "<blockquote expandable>"
             f"🎵 <b>{_esc(title)}</b>\n"
             f"👤 Tác giả: {_esc(author)}\n"
             + (f"⏱ Thời lượng: {duration}\n" if duration else "")
+            + f"🔗 Link: {_esc(permalink)}\n"
             + "📥 Nguồn: SoundCloud"
             + "</blockquote>"
         )
@@ -378,14 +406,17 @@ async def _handle_tiktok_photos(msg: Message, url: str, data, images, status):
     music_title = music.get("title") or ""
 
     caption = (
-        "<blockquote>"
+        "<blockquote expandable>"
         + (f"🖼 <b>{_esc(desc)}</b>\n" if desc else "🖼 <b>Ảnh TikTok</b>\n")
-        + f"👤 {f'@{_esc(unique_id)}' if unique_id else ''}"
-        + (f" ({_esc(nickname)})" if nickname else "")
-        + "\n"
-        + f"❤️ {_fmt_num(stats.get('like'))}  💬 {_fmt_num(stats.get('comment'))}  "
-        f"🔁 {_fmt_num(stats.get('share'))}  ▶️ {_fmt_num(stats.get('play'))}\n"
+        + (f"👤 Tên: {_esc(nickname)}\n" if nickname else "")
+        + (f"🆔 Username: @{_esc(unique_id)}\n" if unique_id else "")
+        + f"❤️ Tim: {_fmt_num(stats.get('like'))}\n"
+        + f"👁️ View: {_fmt_num(stats.get('play'))}\n"
+        + f"💬 Bình luận: {_fmt_num(stats.get('comment'))}\n"
+        + f"🔁 Chia sẻ: {_fmt_num(stats.get('share'))}\n"
         + (f"🎵 Nhạc: {_esc(music_title)}\n" if music_title else "")
+        + (f"🕐 Thời gian: {_fmt_date(vd.get('create_time'))}\n" if vd.get("create_time") else "")
+        + f"🔗 Link: {_esc(url)}\n"
         + "📥 Nguồn: TikTok"
         + "</blockquote>"
     )
@@ -494,6 +525,7 @@ async def _handle_tiktok_video(msg: Message, url: str):
         nickname = author.get("nickname") or ""
         unique_id = author.get("uniqueId") or ""
         duration = _fmt_duration(vd.get("duration") or 0)
+        create_time = _fmt_date(vd.get("create_time"))
 
         tmp = _tmpdir()
         video_path = tmp / f"tt_{vd.get('id') or 'video'}.mp4"
@@ -501,15 +533,18 @@ async def _handle_tiktok_video(msg: Message, url: str):
             await _download_file(session, dl_url, video_path)
 
         caption = (
-            "<blockquote>"
+            "<blockquote expandable>"
             + (f"🎬 <b>{_esc(desc)}</b>\n" if desc else "🎬 <b>Video TikTok</b>\n")
-            + f"👤 {f'@{_esc(unique_id)}' if unique_id else ''}"
-            + (f" ({_esc(nickname)})" if nickname else "")
-            + "\n"
-            + f"❤️ {_fmt_num(stats.get('like'))}  💬 {_fmt_num(stats.get('comment'))}  "
-            f"🔁 {_fmt_num(stats.get('share'))}  ▶️ {_fmt_num(stats.get('play'))}\n"
-            + (f"⏱ {duration}\n" if duration else "")
+            + f"👤 Tên: {_esc(nickname)}\n"
+            + (f"🆔 Username: @{_esc(unique_id)}\n" if unique_id else "")
+            + f"❤️ Tim: {_fmt_num(stats.get('like'))}\n"
+            + f"👁️ View: {_fmt_num(stats.get('play'))}\n"
+            + f"💬 Bình luận: {_fmt_num(stats.get('comment'))}\n"
+            + f"🔁 Chia sẻ: {_fmt_num(stats.get('share'))}\n"
+            + (f"⏱ Thời lượng: {duration}\n" if duration else "")
             + (f"🎵 Nhạc: {_esc(music.get('title'))}\n" if music.get("title") else "")
+            + (f"🕐 Thời gian: {create_time}\n" if create_time else "")
+            + f"🔗 Link: {_esc(url)}\n"
             + "📥 Nguồn: TikTok"
             + "</blockquote>"
         )
@@ -600,17 +635,22 @@ async def tiktok_user_info(_, ctx: Message):
         nickname = a.get("nickname") or ""
         unique_id = a.get("uniqueId") or username
         verified = " ✅" if a.get("verified") else ""
+        sig = (a.get("signature") or "").strip()
+        bio_link = _bio_link(a)
+        create_time = _fmt_date(a.get("createTime"))
         caption = (
-            "<blockquote>"
-            f"👤 <b>{_esc(nickname)}</b>{verified}\n"
-            f"🆔 @{_esc(unique_id)}\n"
-            + (f"📝 {_esc(a.get('signature'))}\n" if a.get("signature") else "")
-            + f"👥 Follower: <b>{_fmt_num(sr.get('follower'))}</b>"
-            f"  •  Đang follow: {_fmt_num(sr.get('following'))}\n"
-            + f"❤️ {_fmt_num(sr.get('heart'))}"
-            f"  •  🎬 {_fmt_num(sr.get('video'))} video\n"
+            "<blockquote expandable>"
+            f"👤 Tên: <b>{_esc(nickname)}</b>{verified}\n"
+            f"🆔 Username: @{_esc(unique_id)}\n"
+            f"👥 Follower: <b>{_fmt_num(sr.get('follower'))}</b>\n"
+            f"👤 Đang follow: {_fmt_num(sr.get('following'))}\n"
+            f"❤️ Tim: {_fmt_num(sr.get('heart'))}\n"
+            f"🎬 Video: {_fmt_num(sr.get('video'))}\n"
+            + (f"📝 Bio: {_esc(sig)}\n" if sig else "")
+            + (f"🔗 Link bio: {_esc(bio_link)}\n" if bio_link else "")
             + (f"🌍 Khu vực: {_esc(a.get('region'))}\n" if a.get("region") else "")
             + (f"🔴 Đang livestream\n" if live.get("is_live") else "")
+            + (f"🕐 Thời gian: {create_time}\n" if create_time else "")
             + "📥 Nguồn: TikTok"
             + "</blockquote>"
         )
@@ -643,7 +683,10 @@ async def tiktok_user_info(_, ctx: Message):
                     ("heart", _fmt_num(sr.get("heart")), "Tim"),
                     ("play", _fmt_num(sr.get("video")), "Video"),
                 ],
-                a.get("signature") or "",
+                # Thẻ ảnh: bio kèm bioLink để _extract_link tách link ra dòng riêng.
+                (sig + " " + bio_link).strip()
+                if bio_link and bio_link not in sig
+                else sig,
                 f"Khu vực: {a.get('region')}"
                 if a.get("region")
                 else ("Đang livestream" if live.get("is_live") else ""),
@@ -807,12 +850,13 @@ async def _handle_studiointernet(msg: Message, url: str):
             raise RuntimeError(str(last_err or "Không tải được video."))
 
         caption = (
-            "<blockquote>"
+            "<blockquote expandable>"
             f"🎬 <b>{_esc(title)}</b>\n"
-            + (f"👤 {_esc(author)}\n" if author else "")
+            + (f"👤 Tác giả: {_esc(author)}\n" if author else "")
             + (f"⏱ Thời lượng: {duration}\n" if duration else "")
-            + (f"👀 {_fmt_num(views)} lượt xem"
-               + (f"  •  ❤️ {_fmt_num(likes)}\n" if likes else "\n") if views else "")
+            + (f"👀 View: {_fmt_num(views)}\n" if views else "")
+            + (f"❤️ Tim: {_fmt_num(likes)}\n" if likes else "")
+            + f"🔗 Link: {_esc(url)}\n"
             + f"📥 Nguồn: {_esc(source)}"
             + "</blockquote>"
         )
@@ -854,11 +898,18 @@ async def _handle_generic_video(msg: Message, url: str):
         title = info.get("title") or "Video"
         uploader = info.get("uploader") or info.get("channel") or ""
         duration = _fmt_duration(info.get("duration") or 0)
+        upload_date = info.get("upload_date") or ""
+        if upload_date and len(upload_date) == 8:
+            upload_date = f"{upload_date[6:8]}/{upload_date[4:6]}/{upload_date[0:4]}"
         caption = (
-            "<blockquote>"
+            "<blockquote expandable>"
             f"🎬 <b>{_esc(title)}</b>\n"
-            + (f"👤 { _esc(uploader)}\n" if uploader else "")
+            + (f"👤 Tác giả: {_esc(uploader)}\n" if uploader else "")
             + (f"⏱ Thời lượng: {duration}\n" if duration else "")
+            + (f"👀 View: {_fmt_num(info.get('view_count'))}\n" if info.get("view_count") else "")
+            + (f"❤️ Tim: {_fmt_num(info.get('like_count'))}\n" if info.get("like_count") else "")
+            + (f"🕐 Thời gian: {upload_date}\n" if upload_date else "")
+            + f"🔗 Link: {_esc(url)}\n"
             + f"📥 Nguồn: {_esc(host)}"
             + "</blockquote>"
         )
