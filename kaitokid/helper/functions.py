@@ -9,6 +9,24 @@ from pyrogram.types import Message
 from kaitokid import app
 
 
+def get_sender(message):
+    """Trả về (id, tên hiển thị) của người/kênh/bot gửi tin.
+
+    Tin nhắn từ acc thường/bot có message.from_user; tin từ acc dùng
+    kênh để nhắn có message.sender_chat và from_user = None. Dùng hàm
+    này thay cho message.from_user.id để mọi lệnh chạy được cả 3 dạng.
+    """
+    if message.from_user:
+        u = message.from_user
+        name = f"{u.first_name} {u.last_name or ''}".strip() or str(u.id)
+        return u.id, name
+    if message.sender_chat:
+        c = message.sender_chat
+        name = getattr(c, "title", None) or str(c.id)
+        return c.id, name
+    return None, None
+
+
 def get_urls_from_text(text: str) -> bool:
     regex = r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]
                 [.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(
