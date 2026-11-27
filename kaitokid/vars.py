@@ -36,7 +36,7 @@ else:
 LOG_GROUP_ID = environ.get("LOG_GROUP_ID")
 USER_SESSION = environ.get("USER_SESSION")
 TZ = environ.get("TZ", "Asia/Ho_Chi_Minh")
-COMMAND_HANDLER = environ.get("COMMAND_HANDLER", "! /").split()
+COMMAND_HANDLER = environ.get("COMMAND_HANDLER", "! / .").split()
 SUDO = list(
     {
         int(x)
