@@ -6,7 +6,10 @@ Media Downloader — dán link là bot gửi nhạc/video.
 - Link TikTok -> lấy info + video không watermark qua API repo Tiktok
   (repo ontopcommunity/Tiktok, deploy tiktokvippro.vercel.app).
 - Link video nền tảng khác (YouTube, Instagram, Facebook, X, ...) ->
-  tải video chất lượng cao nhất bằng yt-dlp.
+  tải video qua API studiointernet (repo ontopcommunity/studiointernet-,
+  deploy superinternetapi.vercel.app, backend gendownload.com) — lấy
+  link stream chất lượng cao nhất rồi tải về gửi. yt-dlp chỉ còn là
+  fallback khi API lỗi.
 - /tiktok {username} -> thông tin tài khoản TikTok.
 
 Toàn bộ caption đều dùng định dạng trích dẫn (blockquote) + nút
@@ -39,12 +42,15 @@ __HELP__ = """
 <blockquote>🎵 <b>Tải nhạc & video bằng link</b>
 Dán link SoundCloud -> bot gửi file nhạc kèm tên bài + tác giả.
 Dán link TikTok -> bot gửi video kèm thông tin video.
-Dán link YouTube / Instagram / Facebook / X / ... -> bot gửi video chất lượng cao nhất.
+Dán link YouTube / Instagram / Facebook / X / ... -> bot gửi video (qua API studiointernet).
 <b>/tiktok {username}</b> - Xem thông tin tài khoản TikTok.</blockquote>
 """
 
 APISYNTHESIS_BASE = "https://apisynthesis.vercel.app/api"
 TIKTOK_API_BASE = "https://tiktokvippro.vercel.app/api"
+# API tải video đa nền tảng (repo ontopcommunity/studiointernet-,
+# backend gendownload.com). POST /api/extract {url} -> info + formats.
+STUDIOINTERNET_API = "https://superinternetapi.vercel.app/api"
 
 # Telegram Bot API giới hạn file gửi 50MB, để dư 2MB.
 MAX_FILE_SIZE = 48 * 1024 * 1024
@@ -142,6 +148,16 @@ async def _fetch_json(session, url, params=None, timeout=60):
         if resp.status >= 400:
             raise RuntimeError(f"API lỗi {resp.status}")
         return await resp.json(content_type=None)
+
+
+async def _post_json(session, url, payload, timeout=60):
+    async with session.post(
+        url, json=payload, headers=UA, timeout=aiohttp.ClientTimeout(total=timeout)
+    ) as resp:
+        data = await resp.json(content_type=None)
+        if resp.status >= 400 or data.get("error"):
+            raise RuntimeError(data.get("error") or f"API lỗi {resp.status}")
+        return data
 
 
 async def _download_file(session, url, dest: Path, timeout=300):
@@ -478,6 +494,98 @@ def _is_video_domain(url: str):
     return any(host == d or host.endswith("." + d) for d in VIDEO_DOMAINS)
 
 
+def _pick_video_formats(data):
+    """Chọn thứ tự thử các format video: ưu tiên 720p, rồi từ cao xuống thấp.
+
+    API trả formats đã xếp từ cao xuống thấp (2160p -> 144p + Audio).
+    filesize API trả không đáng tin (thường cùng 1 số) nên phải tải thử
+    mới biết có quá 48MB không — thử lần lượt cho tới khi tải được.
+    """
+    fmts = [f for f in (data.get("formats") or [])
+            if f.get("type") == "video" and f.get("url")]
+    if not fmts:
+        return []
+    # Đưa 720p lên đầu (cân bằng chất lượng/dung lượng cho Telegram).
+    pref = [f for f in fmts if f.get("label") == "720p"]
+    rest = [f for f in fmts if f.get("label") != "720p"]
+    return pref + rest
+
+
+async def _handle_studiointernet(msg: Message, url: str):
+    """Tải video đa nền tảng qua API studiointernet (gendownload).
+
+    Nếu API lỗi thì rơi về yt-dlp (_handle_generic_video).
+    """
+    status = await msg.reply_text("🎬 Đang tải video...", quote=True)
+    video_path = None
+    try:
+        async with aiohttp.ClientSession() as session:
+            data = await _post_json(
+                session, f"{STUDIOINTERNET_API}/extract", {"url": url}
+            )
+        candidates = _pick_video_formats(data)
+        if not candidates:
+            raise RuntimeError("Không có format video.")
+        title = data.get("title") or "Video"
+        author = data.get("author") or ""
+        source = data.get("source") or urlparse(url).netloc
+        duration = _fmt_duration(data.get("duration") or 0)
+        views = data.get("views")
+        likes = data.get("likes")
+
+        tmp = _tmpdir()
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", urlparse(url).path.strip("/"))[:40]
+        video_path = tmp / f"si_{safe or 'video'}.mp4"
+        last_err = None
+        downloaded = False
+        for fmt in candidates:
+            try:
+                if video_path.exists():
+                    video_path.unlink()
+                async with aiohttp.ClientSession() as session:
+                    await _download_file(session, fmt["url"], video_path)
+                downloaded = True
+                break
+            except Exception as e:
+                last_err = e
+                LOGGER.warning("studiointernet format %s fail: %s", fmt.get("label"), e)
+                continue
+        if not downloaded or not video_path.exists() or video_path.stat().st_size == 0:
+            raise RuntimeError(str(last_err or "Không tải được video."))
+
+        caption = (
+            "<blockquote>"
+            f"🎬 <b>{_esc(title)}</b>\n"
+            + (f"👤 {_esc(author)}\n" if author else "")
+            + (f"⏱ Thời lượng: {duration}\n" if duration else "")
+            + (f"👀 {_fmt_num(views)} lượt xem"
+               + (f"  •  ❤️ {_fmt_num(likes)}\n" if likes else "\n") if views else "")
+            + f"📥 Nguồn: {_esc(source)}"
+            + "</blockquote>"
+        )
+        await msg.reply_video(
+            video=str(video_path),
+            caption=caption,
+            parse_mode=enums.ParseMode.HTML,
+            reply_markup=_open_link_kb(url),
+            quote=True,
+        )
+        await status.delete()
+    except Exception as e:
+        LOGGER.warning("studiointernet fail, fallback yt-dlp: %s", e)
+        try:
+            await status.delete()
+        except Exception:
+            pass
+        await _handle_generic_video(msg, url)
+    finally:
+        if video_path and os.path.exists(video_path):
+            try:
+                os.remove(video_path)
+            except OSError:
+                pass
+
+
 async def _handle_generic_video(msg: Message, url: str):
     status = await msg.reply_text("🎬 Đang tải video...", quote=True)
     video_path = None
@@ -512,13 +620,13 @@ async def _handle_generic_video(msg: Message, url: str):
     except Exception as e:
         LOGGER.exception("Generic video handler error")
         err = str(e)
-        # YouTube chặn tải từ máy chủ (đòi đăng nhập xác minh không phải bot).
+        # YouTube chặn yt-dlp (đòi đăng nhập xác minh không phải bot).
         if ("youtube.com" in url or "youtu.be" in url) and (
             "bot" in err.lower() or "sign in" in err.lower()
         ):
             err_msg = (
-                "❌ YouTube chặn tải video từ máy chủ (đòi đăng nhập xác minh). "
-                "Thử link TikTok, Facebook hoặc Instagram nhé."
+                "❌ Không tải được video này (API lỗi, yt-dlp cũng bị YouTube chặn "
+                "vì đòi đăng nhập xác minh)."
             )
         else:
             err_msg = (
@@ -555,8 +663,8 @@ async def media_link_watcher(_, msg: Message):
     m = TIKTOK_RE.search(text)
     if m:
         return await _handle_tiktok_video(msg, m.group(0).rstrip(").,]>"))
-    # Video nền tảng khác
+    # Video nền tảng khác -> API studiointernet, lỗi thì fallback yt-dlp
     for m in URL_RE.finditer(text):
         link = m.group(0).rstrip(").,]>")
         if _is_video_domain(link):
-            return await _handle_generic_video(msg, link)
+            return await _handle_studiointernet(msg, link)
