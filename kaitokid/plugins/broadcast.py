@@ -9,12 +9,12 @@ from pyrogram.types import Message
 
 from database.users_chats_db import peers_db
 from kaitokid import app
-from kaitokid.vars import SUDO
+from kaitokid.vars import COMMAND_HANDLER, SUDO
 from utils import broadcast_messages
 
 LOGGER = getLogger("KaitoKid")
 
-@app.on_message(filters.command("broadcast") & filters.user(SUDO) & filters.reply)
+@app.on_message(filters.command("broadcast", COMMAND_HANDLER) & filters.user(SUDO) & filters.reply)
 async def broadcast(_, ctx: Message):
     peers = await peers_db.get_all_peers()
     b_msg = ctx.reply_to_message
