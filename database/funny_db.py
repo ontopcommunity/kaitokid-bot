@@ -46,3 +46,34 @@ async def reset_user_command_usage(chat_id: int, user_id: int):
     await execute(
         "DELETE FROM kk_funny WHERE chat_id = $1 AND user_id = $2", chat_id, user_id
     )
+
+
+async def get_daily_usage_count(
+    chat_id: int, user_id: int, command: str, day
+) -> int:
+    """Số lượt user đã dùng lệnh trong 1 ngày (day = date theo giờ VN)."""
+    row = await fetchrow(
+        "SELECT count FROM kk_daily_usage "
+        "WHERE chat_id = $1 AND user_id = $2 AND command = $3 AND day = $4",
+        chat_id,
+        user_id,
+        command,
+        day,
+    )
+    return row["count"] if row else 0
+
+
+async def increment_daily_usage(
+    chat_id: int, user_id: int, command: str, day
+):
+    """Tăng 1 lượt dùng lệnh của user trong ngày."""
+    await execute(
+        "INSERT INTO kk_daily_usage (chat_id, user_id, command, day, count) "
+        "VALUES ($1, $2, $3, $4, 1) "
+        "ON CONFLICT (chat_id, user_id, command, day) "
+        "DO UPDATE SET count = kk_daily_usage.count + 1",
+        chat_id,
+        user_id,
+        command,
+        day,
+    )
