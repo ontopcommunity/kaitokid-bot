@@ -23,7 +23,7 @@ __HELP__ = """
 /jackpot - Máy đánh bạc 🎰</blockquote>
 <blockquote>🎮 Mini game (người chơi mới được cấp 500.000):
 /trochoi - Menu chọn trò
-/tx - Tài xỉu 🎲 (vd: /tx tài 5000; thắng x3, cược tối thiểu 5.000)
+/tx - Tài xỉu 🎲 (vd: /tx tài 5k; thắng x3, cược tối thiểu 5.000, viết tắt 5k/1m/1b)
 /bc - Bầu cua tôm cá 🦀
 /noitu - Nối từ 🔤 (mỗi câu đúng +5% số dư)
 /lucky - Vòng xoay may mắn 🎡
