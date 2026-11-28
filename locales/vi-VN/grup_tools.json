@@ -1,6 +1,6 @@
 {
     "sudo_join_msg": "Wow anh em ơi, đại ca của tôi - @ontopdz2k9 tiên sinh vừa tham gia nhóm này!",
-    "log_bot_added": "#Nhóm Mới\nNhóm = {ttl}(<code>{cid}</code>)\nSố Thành Viên = <code>{tot}</code>\nThêm bởi - {r_j}",
+    "log_bot_added": "<blockquote expandable>🆕 <b>BOT ĐƯỢC THÊM VÀO NHÓM MỚI</b>\n👥 Nhóm: <b>{ttl}</b> (<code>{cid}</code>)\n👤 Số thành viên: <b>{tot}</b>\n🙋 Thêm bởi: {r_j}</blockquote>",
     "support_btn": "Hỗ Trợ",
     "help_btn": "ℹ️ Trợ Giúp",
     "update_btn": "📢 Cập Nhật",
