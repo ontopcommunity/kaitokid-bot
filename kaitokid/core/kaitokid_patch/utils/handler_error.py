@@ -22,7 +22,7 @@ import typing
 
 import pyrogram
 
-from kaitokid.log_channel import log_block, send_log
+from kaitokid.log_channel import delete_after, log_block, send_log
 
 LOGGER = logging.getLogger("KaitoKid")
 
@@ -85,8 +85,14 @@ async def handle_error(
     )
     if isinstance(m, pyrogram.types.Message):
         with contextlib.suppress(Exception):
-            await m.reply_msg(_SORRY)
+            sent = await m.reply_msg(_SORRY)
+            if sent:
+                # Tin lỗi tự xóa sau 2 phút (cho mọi người).
+                delete_after(m._client, sent.chat.id, sent.id)
     if isinstance(m, pyrogram.types.CallbackQuery):
         with contextlib.suppress(Exception):
-            await m.message.reply_msg(_SORRY)
+            sent = await m.message.reply_msg(_SORRY)
+            if sent:
+                # Tin lỗi tự xóa sau 2 phút (cho mọi người).
+                delete_after(m.message._client, sent.chat.id, sent.id)
     return True
