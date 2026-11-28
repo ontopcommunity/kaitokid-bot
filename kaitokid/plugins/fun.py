@@ -12,6 +12,7 @@ from pyrogram.errors import MessageIdInvalid, PeerIdInvalid, ReactionInvalid
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from kaitokid import app, user
 from kaitokid.core.decorator.errors import capture_err
+from kaitokid.helper.functions import get_sender
 from kaitokid.helper.localization import use_chat_lang
 from kaitokid.vars import COMMAND_HANDLER, SUDO
 
@@ -81,7 +82,10 @@ GIF_PATH = "/www/wwwroot/tiensi-teo-bot/assets/tungxu.gif"
 # Hàm xử lý khi người dùng gõ lệnh /coin
 @app.on_message(filters.command("tungxu", COMMAND_HANDLER))
 async def coin_flip_command(client, message):
-    user_id = message.from_user.id
+    sender_id, _ = get_sender(message)
+    if sender_id is None:
+        return
+    user_id = sender_id
     
     # Kiểm tra nội dung sau lệnh /coin
     try:
@@ -107,12 +111,12 @@ async def coin_flip_command(client, message):
     reply_message = await message.reply(f"💰 Bạn đã đoán là xu sẽ {guess}. Nhấn nút bên để tung đồng xu!", reply_markup=buttons)
 
 # Hàm xử lý khi bấm nút "Tung xu"
-@app.on_callback_query(filters.regex(r"flip:(\d+)"))
+@app.on_callback_query(filters.regex(r"flip:(-?\d+)"))
 async def coin_flip_callback(client, callback_query: CallbackQuery):
     user_id = int(callback_query.data.split(":")[1])
-    
-    # Kiểm tra nếu người bấm nút là người ra lệnh
-    if callback_query.from_user.id != user_id:
+
+    # Kiểm tra nếu người bấm nút là người ra lệnh (kênh: ID âm thì ai cũng được bấm).
+    if user_id > 0 and callback_query.from_user.id != user_id:
         await callback_query.answer("Bạn không thể tung vì không phải người cược!", show_alert=True)
         return
 
