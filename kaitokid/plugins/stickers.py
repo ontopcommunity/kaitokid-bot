@@ -31,7 +31,7 @@ from kaitokid import app
 from kaitokid.helper import fetch, use_chat_lang
 from kaitokid.helper.functions import get_sender
 from kaitokid.core.decorator.errors import capture_err
-from kaitokid.vars import COMMAND_HANDLER, LOG_CHANNEL
+from kaitokid.vars import COMMAND_HANDLER, LOG_CHANNEL, SUDO
 
 LOGGER = getLogger("KaitoKid")
 
@@ -482,10 +482,11 @@ async def kang_sticker(self: Client, ctx: Message, strings):
     videos = False
     convert = False
     reply = ctx.reply_to_message
-    # Chủ pack sticker phải là user/bot, không được là kênh — kênh thì pack
-    # đứng tên bot (tên pack vẫn theo id kênh nên mỗi kênh 1 pack riêng).
+    # Chủ pack sticker phải là user, không được là kênh hay bot — kênh thì pack
+    # đứng tên chủ bot (tên pack vẫn theo id kênh nên mỗi kênh 1 pack riêng).
     if sender_id < 0:
-        user = await self.resolve_peer(self.me.username or self.me.id)
+        owner_id = SUDO[0] if SUDO else sender_id
+        user = await self.resolve_peer(owner_id)
     else:
         user = await self.resolve_peer(sender_username or sender_id)
 
