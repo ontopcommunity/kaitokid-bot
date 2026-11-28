@@ -21,6 +21,15 @@ __HELP__ = """
 /ball - Bóng bowling 🎳
 /football - Bóng đá ⚽
 /jackpot - Máy đánh bạc 🎰</blockquote>
+<blockquote>🎮 Mini game (người chơi mới được cấp 500.000):
+/trochoi - Menu chọn trò
+/tx - Tài xỉu 🎲 (vd: /tx tài 100; thắng x3)
+/bc - Bầu cua tôm cá 🦀
+/noitu - Nối từ 🔤 (mỗi câu đúng +5% số dư)
+/lucky - Vòng xoay may mắn 🎡
+/sodu - Xem số dư 💰
+/bxh - Bảng xếp hạng số tiền 🏆
+/gift - Tặng tiền 🎁 (vd: /gift @username 1000)</blockquote>
 """
 
 @app.on_cmd("dice")
