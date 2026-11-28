@@ -55,7 +55,7 @@ from kaitokid.helper.functions import extract_user, extract_user_and_reason
 from kaitokid.helper.http import fetch
 from kaitokid.helper.human_read import get_readable_file_size, get_readable_time
 from kaitokid.helper.localization import use_chat_lang
-from kaitokid.helper.log_channel import log_block, send_log
+from kaitokid.log_channel import log_block, send_log
 from kaitokid.vars import AUTO_RESTART, COMMAND_HANDLER, LOG_CHANNEL, SUDO
 
 LOGGER = getLogger("KaitoKid")
