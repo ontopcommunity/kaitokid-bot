@@ -22,7 +22,7 @@ import typing
 
 import pyrogram
 
-from kaitokid.helper.log_channel import log_block, send_log
+from kaitokid.log_channel import log_block, send_log
 
 LOGGER = logging.getLogger("KaitoKid")
 
