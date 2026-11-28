@@ -198,12 +198,7 @@ def _tx_help_text(uid: int, balance: int, name: str = "") -> str:
         "<blockquote expandable>"
         "🎲 <b>TÀI XỈU</b>\n"
         f"{who}"
-        "Lắc 3 xúc xắc 6 mặt, tổng 4–10 là <b>Xỉu</b>, 11–17 là <b>Tài</b>. "
-        "Ra 3 con giống nhau là <b>Bão</b>, nhà cái ăn cả hai cửa.\n"
-        "Thắng nhận <b>x3</b> tiền cược, thua mất tiền cược.\n"
-        "Cược tối thiểu: <b>5.000</b>.\n"
-        f"Số dư: <b>{_fmt_bal(uid, balance)}</b>\n"
-        "Chọn cửa bên dưới để chơi."
+        f"💰 Số dư: <b>{_fmt_bal(uid, balance)}</b>"
         "</blockquote>"
     )
 
@@ -317,8 +312,8 @@ async def tx_callback(client, query: CallbackQuery):
         await query.edit_message_text(
             f"<blockquote expandable>🎲 <b>TÀI XỈU</b>\n"
             f"👤 Người chơi: <b>{pname}</b>\n"
-            f"Bạn chọn cửa <b>{cname}</b>.\n"
-            f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\nChọn số tiền cược bên dưới.</blockquote>",
+            f"🎯 Cửa: <b>{cname}</b>\n"
+            f"💰 Số dư: <b>{_fmt_bal(uid, bal)}</b></blockquote>",
             reply_markup=_tx_kb(uid, "amount", choice),
         )
         return
@@ -402,17 +397,15 @@ def _bc_text(uid: int, bets: dict, chip: int, balance: int, name: str = "") -> s
     if name:
         lines.append(f"👤 Người chơi: <b>{name}</b>")
     lines += [
-        "Bấm vào ô để đặt cược theo mức đang chọn. "
-        "Bấm bao nhiêu lần cũng được, tiền cộng dồn theo từng ô.",
-        f"Mức cược đang chọn: <b>{_fmt(chip)}</b>",
-        f"Đã đặt: <b>{_fmt(total)}</b>  •  Số dư: <b>{_fmt_bal(uid, balance)}</b>",
+        f"🎯 Mức cược: <b>{_fmt(chip)}</b>",
+        f"💰 Số dư: <b>{_fmt_bal(uid, balance)}</b>",
+        f"Đã đặt: <b>{_fmt(total)}</b>",
     ]
     if bets:
         lines.append("—")
         for key, label in BC_SYMBOLS:
             if bets.get(key):
                 lines.append(f"{label}: <b>{_fmt(bets[key])}</b>")
-    lines.append("Ra 1 lần ăn x1, 2 lần ăn x2, 3 lần ăn x3 (tính cả vốn).")
     lines.append("</blockquote>")
     return "\n".join(lines)
 
@@ -591,12 +584,8 @@ async def noitu_cmd(client, message: Message):
     await message.reply_text(
         "<blockquote expandable>🔤 <b>NỐI TỪ</b>\n"
         f"👤 Người chơi: <b>{name}</b>\n"
-        f"Bot ra từ: <b>{start}</b>\n"
-        "Bạn nối tiếp bằng từ có âm đầu = âm cuối của từ trên. "
-        "Từ phải có trong từ điển, không được trùng từ đã dùng.\n"
-        f"Mỗi câu đúng thưởng <b>5%</b> số dư hiện tại. "
-        f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
-        "Gõ từ tiếp theo vào khung chat. Gõ <code>/noitu dung</code> để dừng."
+        f"💰 Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
+        f"Bot ra từ: <b>{start}</b>"
         "</blockquote>",
         quote=True,
     )
@@ -737,12 +726,9 @@ def _lucky_menu_text(uid: int, balance: int, name: str = "") -> str:
     if name:
         lines.append(f"👤 Người chơi: <b>{name}</b>")
     lines += [
-        f"Số dư: <b>{_fmt_bal(uid, balance)}</b>",
-        "Các ô trên vòng xoay:",
+        f"💰 Số dư: <b>{_fmt_bal(uid, balance)}</b>",
     ]
-    for _k, w, label in LUCKY_SLOTS:
-        lines.append(f"• {label} — {w}%")
-    lines.append("Bấm Quay để thử vận may!</blockquote>")
+    lines.append("</blockquote>")
     return "\n".join(lines)
 
 
@@ -848,14 +834,7 @@ def _menu_text(uid: int, balance: int, name: str = "") -> str:
     return (
         "<blockquote expandable>🎮 <b>MENU TRÒ CHƠI</b>\n"
         f"{who}"
-        f"Số dư: <b>{_fmt_bal(uid, balance)}</b>\n"
-        "Chọn một trò để chơi:\n"
-        "🎲 <b>Tài xỉu</b> — /tx\n"
-        "🦀 <b>Bầu cua</b> — /bc\n"
-        "🔤 <b>Nối từ</b> — /noitu\n"
-        "🎡 <b>Vòng xoay may mắn</b> — /lucky\n"
-        "🏆 <b>Bảng xếp hạng</b> — /bxh\n"
-        "🎁 <b>Tặng tiền</b> — /gift @username số_tiền"
+        f"💰 Số dư: <b>{_fmt_bal(uid, balance)}</b>"
         "</blockquote>"
     )
 
@@ -897,11 +876,8 @@ async def menu_callback(client, query: CallbackQuery):
         await query.edit_message_text(
             "<blockquote expandable>🔤 <b>NỐI TỪ</b>\n"
             f"👤 Người chơi: <b>{pname}</b>\n"
-            f"Bot ra từ: <b>{start}</b>\n"
-            "Bạn nối tiếp bằng từ có âm đầu = âm cuối của từ trên. "
-            "Mỗi câu đúng thưởng <b>5%</b> số dư hiện tại. "
-            f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
-            "Gõ từ tiếp theo vào khung chat.</blockquote>"
+            f"💰 Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
+            f"Bot ra từ: <b>{start}</b></blockquote>"
         )
     elif action == "lucky":
         await query.edit_message_text(_lucky_menu_text(uid, bal, pname), reply_markup=_lucky_kb(uid))
