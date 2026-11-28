@@ -51,3 +51,22 @@ def log_block(title: str, lines: list[str]) -> str:
         f"<blockquote expandable>{title}\n{body}\n"
         f"🕐 {vn_now()}</blockquote>"
     )
+
+
+async def _delete_later(client, chat_id: int, msg_id: int, delay: int) -> None:
+    await asyncio.sleep(delay)
+    try:
+        await client.delete_messages(chat_id, msg_id, revoke=True)
+    except Exception as e:
+        LOGGER.debug(f"Không xóa được tin (đã xóa rồi?): {e}")
+
+
+def delete_after(client, chat_id: int, msg_id: int, delay: int = 120) -> None:
+    """Xóa một tin nhắn sau N giây (cho mọi người, revoke=True).
+
+    Dùng cho tin báo lỗi gửi cho người dùng: hiện 2 phút rồi tự biến mất.
+    """
+    try:
+        asyncio.create_task(_delete_later(client, chat_id, msg_id, delay))
+    except Exception as e:
+        LOGGER.warning(f"Không tạo được task xóa tin: {e}")
