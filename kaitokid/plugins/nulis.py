@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pyrogram import filters
 
 from kaitokid import app
+from kaitokid.helper.functions import get_sender
 from kaitokid.vars import COMMAND_HANDLER
 
 LOGGER = getLogger("KaitoKid")
@@ -51,6 +52,10 @@ async def handwrite(client, message):
         return await message.reply(
             "Vui lòng trả lời tin nhắn hoặc viết nội dung sau lệnh để sử dụng."
         )
+    # Người gửi có thể là acc thường, bot hoặc kênh.
+    sender_id, _ = get_sender(message)
+    if sender_id is None:
+        return
     nan = await message.reply_msg("Đang xử lý...")
     try:
         img = Image.open("assets/giayviet.jpg")
@@ -62,7 +67,7 @@ async def handwrite(client, message):
         for line in lines:
             draw.text((x, y), line, fill=(1, 22, 55), font=font)
             y = y + line_height - 5
-        file = f"nulis_{message.from_user.id}.jpg"
+        file = f"nulis_{abs(sender_id)}.jpg"
         img.save(file)
         if os.path.exists(file):
             await message.reply_photo(
