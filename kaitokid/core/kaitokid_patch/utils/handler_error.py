@@ -22,13 +22,13 @@ import typing
 
 import pyrogram
 
-from kaitokid.log_channel import delete_after, log_block, send_log
+from kaitokid.log_channel import delete_after, log_error_block, send_log
 
 LOGGER = logging.getLogger("KaitoKid")
 
 _SORRY = (
-    "😭 Bot gặp lỗi khi xử lý lệnh của bạn, "
-    "mình đã gửi nhật ký cho admin rồi. Xin lỗi vì sự bất tiện này..."
+    "<blockquote expandable>😭 Bot gặp lỗi khi xử lý lệnh của bạn, "
+    "mình đã gửi nhật ký cho admin rồi. Xin lỗi vì sự bất tiện này...</blockquote>"
 )
 
 
@@ -73,14 +73,14 @@ async def handle_error(
         )
     send_log(
         client,
-        log_block(
+        log_error_block(
             "🚨 <b>BOT GẶP LỖI</b>",
             [
                 f"👤 Người dùng: <code>{who}</code>",
                 f"💬 Nhóm: <code>{chat.id if chat else 0}</code>",
                 f"📩 Lệnh: <code>{(text or '')[:200]}</code>",
-                f"❌ Lỗi: <code>{exc[-1500:]}</code>",
             ],
+            exc[-1500:],
         ),
     )
     if isinstance(m, pyrogram.types.Message):
