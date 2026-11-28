@@ -17,16 +17,19 @@
 # along with tgEasy.  If not, see <http://www.gnu.org/licenses/>.
 import contextlib
 import logging
-import os
 import traceback
 import typing
-from datetime import datetime
 
 import pyrogram
 
-from kaitokid.vars import LOG_CHANNEL
+from kaitokid.helper.log_channel import log_block, send_log
 
 LOGGER = logging.getLogger("KaitoKid")
+
+_SORRY = (
+    "😭 Bot gặp lỗi khi xử lý lệnh của bạn, "
+    "mình đã gửi nhật ký cho admin rồi. Xin lỗi vì sự bất tiện này..."
+)
 
 
 async def handle_error(
@@ -46,50 +49,44 @@ async def handle_error(
         - The Message or Callback Query where the Error occurred.
 
     """
-
-    day = datetime.now()
-    tgl_now = datetime.now()
-    cap_day = f"{day.strftime('%A')}, {tgl_now.strftime('%d %B %Y %H:%M:%S')}"
-    f_errname = f"crash_{tgl_now.strftime('%d %B %Y')}.txt"
-    LOGGER.error(traceback.format_exc())
-    with open(f_errname, "w+", encoding="utf-8") as log:
-        log.write(
-            f"✍️ Message: {m.text or m.caption}\n👱‍♂️ User: {m.from_user.id if m.from_user else m.sender_chat.id}\n\n{traceback.format_exc()}"
+    exc = traceback.format_exc()
+    LOGGER.error(exc)
+    # Log về kênh ngay bằng text (không ghi file, không upload, không
+    # tải ảnh ngoài) để không làm chậm lệnh đang chạy.
+    if isinstance(m, pyrogram.types.CallbackQuery):
+        client = m.message._client
+        chat = m.message.chat
+        text = m.message.text or m.message.caption
+        who = (
+            m.from_user.id
+            if m.from_user
+            else (m.sender_chat.id if getattr(m, "sender_chat", None) else 0)
         )
-        log.close()
+    else:
+        client = m._client
+        chat = m.chat
+        text = m.text or m.caption
+        who = (
+            m.from_user.id
+            if m.from_user
+            else (m.sender_chat.id if getattr(m, "sender_chat", None) else 0)
+        )
+    send_log(
+        client,
+        log_block(
+            "🚨 <b>BOT GẶP LỖI</b>",
+            [
+                f"👤 Người dùng: <code>{who}</code>",
+                f"💬 Nhóm: <code>{chat.id if chat else 0}</code>",
+                f"📩 Lệnh: <code>{(text or '')[:200]}</code>",
+                f"❌ Lỗi: <code>{exc[-1500:]}</code>",
+            ],
+        ),
+    )
     if isinstance(m, pyrogram.types.Message):
         with contextlib.suppress(Exception):
-            try:
-                await m.reply_photo(
-                    "https://api.dabeecao.org/deo_thanh_cong.jpg",
-                    caption="Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện",
-                )
-            except:
-                await m.reply_msg(
-                    "Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện"
-                )
-            await m._client.send_document(
-                LOG_CHANNEL,
-                f_errname,
-                caption=f"Báo cáo sự cố của Bot này\n{cap_day}",
-            )
+            await m.reply_msg(_SORRY)
     if isinstance(m, pyrogram.types.CallbackQuery):
         with contextlib.suppress(Exception):
-            await m.message.delete()
-            try:
-                await m.reply_photo(
-                    "https://api.dabeecao.org/deo_thanh_cong.jpg",
-                    caption="Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện",
-                )
-            except:
-                await m.message.reply_msg(
-                    "Đã xảy ra lỗi nội bộ trong khi xử lý lệnh của bạn, Nhật ký đã được gửi đến @ontopdz2k9. Xin lỗi vì sự bất tiện"
-                )
-            await m.message._client.send_document(
-                LOG_CHANNEL,
-                f_errname,
-                caption=f"Báo cáo sự cố của Bot này\n{cap_day}",
-            )
-    if os.path.exists(f_errname):
-        os.remove(f_errname)
+            await m.message.reply_msg(_SORRY)
     return True
