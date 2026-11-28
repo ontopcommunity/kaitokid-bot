@@ -29,6 +29,7 @@ from pyrogram.raw.types import (
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from kaitokid import app
 from kaitokid.helper import fetch, use_chat_lang
+from kaitokid.helper.functions import get_sender
 from kaitokid.core.decorator.errors import capture_err
 from kaitokid.vars import COMMAND_HANDLER, LOG_CHANNEL
 
@@ -465,8 +466,13 @@ async def unkangs(self: Client, ctx: Message, strings):
 @app.on_message(filters.command("kang", COMMAND_HANDLER))
 @use_chat_lang()
 async def kang_sticker(self: Client, ctx: Message, strings):
-    if not ctx.from_user:
+    # Chạy cả acc thường, bot, acc dùng kênh: pack đặt theo id người/kênh gửi.
+    sender_id, _ = get_sender(ctx)
+    if sender_id is None:
         return await ctx.reply_msg(strings("anon_warn"), del_in=6)
+    # Tên pack không chứa dấu trừ nên dùng trị tuyệt đối của id.
+    pack_uid = abs(sender_id)
+    sender_username = ctx.from_user.username if ctx.from_user else None
     prog_msg = await ctx.reply_msg(strings("kang_msg"))
     sticker_emoji = "🤔"
     packnum = 0
@@ -476,7 +482,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
     videos = False
     convert = False
     reply = ctx.reply_to_message
-    user = await self.resolve_peer(ctx.from_user.username or ctx.from_user.id)
+    user = await self.resolve_peer(sender_username or sender_id)
 
     if reply and reply.media:
         if reply.photo:
@@ -513,7 +519,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             return await prog_msg.edit_msg("Tôi không thể thêm kiểu sticker này.")
 
         pack_prefix = "anim" if animated else "vid" if videos else "a"
-        packname = f"{pack_prefix}_{ctx.from_user.id}_by_{self.me.username}"
+        packname = f"{pack_prefix}_{pack_uid}_by_{self.me.username}"
 
         if (
             len(ctx.command) > 1
@@ -522,7 +528,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
         ):
             packnum = ctx.command.pop(1)
             packname = (
-                f"{pack_prefix}{packnum}_{ctx.from_user.id}_by_{self.me.username}"
+                f"{pack_prefix}{packnum}_{pack_uid}_by_{self.me.username}"
             )
         if len(ctx.command) > 1:
             sticker_emoji = (
@@ -536,7 +542,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
     elif ctx.entities and len(ctx.entities) > 1:
         pack_prefix = "a"
         filename = "sticker.png"
-        packname = f"c{ctx.from_user.id}_by_{self.me.username}"
+        packname = f"c{pack_uid}_by_{self.me.username}"
         img_url = next(
             (
                 ctx.text[y.offset : (y.offset + y.length)]
@@ -559,7 +565,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
         if len(ctx.command) > 2:
             if ctx.command[2].isdigit() and int(ctx.command[2]) > 0:
                 packnum = ctx.command.pop(2)
-                packname = f"a{packnum}_{ctx.from_user.id}_by_{self.me.username}"
+                packname = f"a{packnum}_{pack_uid}_by_{self.me.username}"
             if len(ctx.command) > 2:
                 sticker_emoji = (
                     "".join(set(EMOJI_PATTERN.findall("".join(ctx.command[2:]))))
@@ -586,7 +592,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                 )
                 if stickerset.set.count >= max_stickers:
                     packnum += 1
-                    packname = f"{pack_prefix}_{packnum}_{ctx.from_user.id}_by_{self.me.username}"
+                    packname = f"{pack_prefix}_{packnum}_{pack_uid}_by_{self.me.username}"
                 else:
                     packname_found = True
             except StickersetInvalid:
@@ -600,7 +606,7 @@ async def kang_sticker(self: Client, ctx: Message, strings):
                     mime_type=self.guess_mime_type(filename),
                     attributes=[DocumentAttributeFilename(file_name=filename)],
                 ),
-                message=f"#Sticker kang bởi UserID -> {ctx.from_user.id}",
+                message=f"#Sticker kang bởi UserID -> {sender_id}",
                 random_id=self.rnd_id(),
             ),
         )
