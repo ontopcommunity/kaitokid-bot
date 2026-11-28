@@ -40,6 +40,12 @@ def paginate_modules(page_n, module_dict, prefix, chat=None):
         )
     )
 
+    # Ghim nút TròChơi vào chính giữa trang 1 (hàng 2, cột giữa).
+    _pin = next((b for b in modules if b.text == "TròChơi"), None)
+    if _pin is not None:
+        modules = [b for b in modules if b.text != "TròChơi"]
+        modules.insert(min(4, len(modules)), _pin)
+
     pairs = list(zip(modules[::3], modules[1::3], modules[2::3]))
     i = 0
     for m in pairs:
