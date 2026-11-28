@@ -86,7 +86,8 @@ async def imdb_choose(_, ctx: Message):
 @app.on_cb("imdbset")
 async def imdblangset(_, query: CallbackQuery):
     _, uid = query.data.split("#")
-    if query.from_user.id != int(uid):
+    # uid âm = lệnh gửi từ kênh: ai cũng được bấm.
+    if not str(uid).startswith("-") and query.from_user.id != int(uid):
         return await query.answer("⚠️ Truy cập bị từ chối!", True)
     buttons = InlineKeyboard()
     buttons.row(
@@ -108,7 +109,8 @@ async def imdblangset(_, query: CallbackQuery):
 @app.on_cb("setimdb")
 async def imdbsetlang(_, query: CallbackQuery):
     _, lang, uid = query.data.split("#")
-    if query.from_user.id != int(uid):
+    # uid âm = lệnh gửi từ kênh: ai cũng được bấm.
+    if not str(uid).startswith("-") and query.from_user.id != int(uid):
         return await query.answer("⚠️ Truy cập bị từ chối!", True)
     _, langset = await is_imdbset(query.from_user.id)
     if langset == lang:
@@ -133,6 +135,10 @@ async def imdbsetlang(_, query: CallbackQuery):
 
 async def imdb_search_vi(kueri, message):
     BTN = []
+    # Người gửi có thể là acc thường, bot hoặc kênh.
+    sender_id, _ = get_sender(message)
+    if sender_id is None:
+        sender_id = 0
     k = await message.reply_photo(
         "https://api.dabeecao.org/data/imdb.jpg",
         caption=f"🔎 Duyệt qua <code>{kueri}</code> trong cơ sở dữ liệu IMDb...",
@@ -168,18 +174,18 @@ async def imdb_search_vi(kueri, message):
                 BTN.append(
                     InlineKeyboardButton(
                         text=num,
-                        callback_data=f"imdbres_vi#{message.from_user.id}#{movieID}",
+                        callback_data=f"imdbres_vi#{sender_id}#{movieID}",
                     )
                 )
             BTN.extend(
                 (
                     InlineKeyboardButton(
                         text="🚩 Ngôn ngữ",
-                        callback_data=f"imdbset#{message.from_user.id}",
+                        callback_data=f"imdbset#{sender_id}",
                     ),
                     InlineKeyboardButton(
                         text="❌ Đóng",
-                        callback_data=f"close#{message.from_user.id}",
+                        callback_data=f"close#{sender_id}",
                     ),
                 )
             )
@@ -197,6 +203,10 @@ async def imdb_search_vi(kueri, message):
 
 async def imdb_search_en(kueri, message):
     BTN = []
+    # Người gửi có thể là acc thường, bot hoặc kênh.
+    sender_id, _ = get_sender(message)
+    if sender_id is None:
+        sender_id = 0
     k = await message.reply_photo(
         "https://api.dabeecao.org/data/imdb.jpg",
         caption=f"🔎 Searching <code>{kueri}</code> in IMDb Database...",
@@ -232,18 +242,18 @@ async def imdb_search_en(kueri, message):
                 BTN.append(
                     InlineKeyboardButton(
                         text=num,
-                        callback_data=f"imdbres_en#{message.from_user.id}#{movieID}",
+                        callback_data=f"imdbres_en#{sender_id}#{movieID}",
                     )
                 )
             BTN.extend(
                 (
                     InlineKeyboardButton(
                         text="🚩 Language",
-                        callback_data=f"imdbset#{message.from_user.id}",
+                        callback_data=f"imdbset#{sender_id}",
                     ),
                     InlineKeyboardButton(
                         text="❌ Close",
-                        callback_data=f"close#{message.from_user.id}",
+                        callback_data=f"close#{sender_id}",
                     ),
                 )
             )
@@ -264,7 +274,8 @@ async def imdbcari(_, query: CallbackQuery):
     BTN = []
     _, lang, msg, uid = query.data.split("#")
     if lang == "vie":
-        if query.from_user.id != int(uid):
+        # uid âm = lệnh gửi từ kênh: ai cũng được bấm.
+        if not str(uid).startswith("-") and query.from_user.id != int(uid):
             return await query.answer("⚠️ Truy cập bị từ chối!", True)
         try:
             kueri = LIST_CARI.get(msg)
@@ -328,7 +339,8 @@ async def imdbcari(_, query: CallbackQuery):
                     f"Rất tiếc, không tải được danh sách tiêu đề trên IMDb. Có thể có giới hạn hoặc server lỗi.\n\n<b>ERROR:</b> <code>{err}</code>"
                 )
     else:
-        if query.from_user.id != int(uid):
+        # uid âm = lệnh gửi từ kênh: ai cũng được bấm.
+        if not str(uid).startswith("-") and query.from_user.id != int(uid):
             return await query.answer("⚠️ Access Denied!", True)
         try:
             kueri = LIST_CARI.get(msg)
@@ -393,7 +405,8 @@ async def imdbcari(_, query: CallbackQuery):
 @app.on_cb("imdbres_vi")
 async def imdb_id_callback(self: Client, query: CallbackQuery):
     i, userid, movie = query.data.split("#")
-    if query.from_user.id != int(userid):
+    # userid âm = lệnh gửi từ kênh: ai cũng được bấm.
+    if not str(userid).startswith("-") and query.from_user.id != int(userid):
         return await query.answer("⚠️ Truy cập bị từ chối!", True)
     with contextlib.redirect_stdout(sys.stderr):
         try:
@@ -570,7 +583,8 @@ async def imdb_id_callback(self: Client, query: CallbackQuery):
 @app.on_cb("imdbres_en")
 async def imdb_en_callback(self: Client, query: CallbackQuery):
     i, userid, movie = query.data.split("#")
-    if query.from_user.id != int(userid):
+    # userid âm = lệnh gửi từ kênh: ai cũng được bấm.
+    if not str(userid).startswith("-") and query.from_user.id != int(userid):
         return await query.answer("⚠️ Access Denied!", True)
     with contextlib.redirect_stdout(sys.stderr):
         try:
