@@ -7,6 +7,7 @@ from pyrogram import filters
 from pyrogram import enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Message
 from kaitokid import app
+from kaitokid.helper.functions import get_sender
 from kaitokid.vars import COMMAND_HANDLER
 
 LOGGER = getLogger("KaitoKid")
@@ -62,7 +63,9 @@ async def movie_search_handler(_, message: Message):
                     return await reply_msg.edit_caption(f"❌ Không tìm thấy phim nào với từ khóa: `{query}`.")
 
                 results = data["data"]["items"]
-                await send_paginated_results(reply_msg, results, page=1, query=query, user_id=message.from_user.id)
+                # Người gửi có thể là acc thường, bot hoặc kênh.
+                sender_id, _ = get_sender(message)
+                await send_paginated_results(reply_msg, results, page=1, query=query, user_id=sender_id if sender_id is not None else 0)
 
     except Exception as e:
         LOGGER.error(f"Lỗi khi tìm kiếm phim: {e}")
@@ -127,8 +130,8 @@ async def search_pagination_handler(_, callback_query):
     _, query, page, user_id = callback_query.data.split("#")
     page = int(page)
 
-    # Kiểm tra quyền truy cập
-    if str(callback_query.from_user.id) != user_id:
+    # Kiểm tra quyền truy cập (user_id âm = lệnh gửi từ kênh: ai cũng được bấm).
+    if not str(user_id).startswith("-") and str(callback_query.from_user.id) != user_id:
         return await callback_query.answer("⚠️ Truy cập bị từ chối", show_alert=True)
 
     async with aiohttp.ClientSession() as session:
@@ -145,8 +148,8 @@ async def search_pagination_handler(_, callback_query):
 async def movie_detail_handler(_, callback_query):
     slug, user_id = callback_query.data.split("#")[1:]
 
-    # Kiểm tra quyền truy cập
-    if str(callback_query.from_user.id) != user_id:
+    # Kiểm tra quyền truy cập (user_id âm = lệnh gửi từ kênh: ai cũng được bấm).
+    if not str(user_id).startswith("-") and str(callback_query.from_user.id) != user_id:
         return await callback_query.answer("⚠️ Truy cập bị từ chối", show_alert=True)
 
     await callback_query.answer("🔍 Đang tải chi tiết phim...")
@@ -177,8 +180,8 @@ async def episode_pagination_handler(_, callback_query):
         _, slug, page, user_id = callback_query.data.split("#")
         page = int(page)
 
-        # Kiểm tra quyền truy cập
-        if str(callback_query.from_user.id) != user_id:
+        # Kiểm tra quyền truy cập (user_id âm = lệnh gửi từ kênh: ai cũng được bấm).
+        if not str(user_id).startswith("-") and str(callback_query.from_user.id) != user_id:
             return await callback_query.answer("⚠️ Truy cập bị từ chối", show_alert=True)
 
         async with aiohttp.ClientSession() as session:
@@ -283,8 +286,8 @@ async def send_paginated_episodes(message, movie, episodes, page, user_id):
 async def close_callback(_, callback_query):
     user_id = callback_query.data.split("#")[1]
 
-    # Kiểm tra quyền truy cập
-    if str(callback_query.from_user.id) != user_id:
+    # Kiểm tra quyền truy cập (user_id âm = lệnh gửi từ kênh: ai cũng được bấm).
+    if not str(user_id).startswith("-") and str(callback_query.from_user.id) != user_id:
         return await callback_query.answer("⚠️ Truy cập bị từ chối", show_alert=True)
 
     await callback_query.message.delete()
