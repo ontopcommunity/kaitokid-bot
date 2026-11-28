@@ -6,12 +6,12 @@
     "schedule_already_on": "Đã có một lịch trình đang chạy trong cuộc trò chuyện này. Tắt nó bằng cách sử dụng cờ `-d`.",
     "nmd_enable_success": "Đã bật chế độ ban đêm thành công trong cuộc trò chuyện này.\nNhóm sẽ bị khóa vào {st} và sẽ được mở sau {lockdur} mỗi ngày.",
     "nmd_cb": "🔖 Chào, Tôi là {bname}",
-    "nmd_off_not_admin": "#NIGHTMODE_FAIL\nKhông thể tắt chế độ ban đêm tại `{chat_id}`, vì {bname} không phải là quản trị viên trong trò chuyện `{chat_id}`",
-    "nmd_off_not_present": "#NIGHTMODE_FAIL\nKhông thể tắt chế độ ban đêm tại `{chat_id}`, vì {bname} không có mặt trong trò chuyện `{chat_id}`. Đã xóa nhóm khỏi danh sách.",
-    "nmd_off_err": "#NIGHTMODE_FAIL\nKhông thể tắt chế độ ban đêm tại `{chat_id}`\nLỖI: `{e}`",
+    "nmd_off_not_admin": "<blockquote expandable>🌙 <b>CHẾ ĐỘ BAN ĐÊM — MỞ NHÓM THẤT BẠI</b>\n💬 Nhóm: <code>{chat_id}</code>\n❌ {bname} không phải quản trị viên nên không mở được nhóm.</blockquote>",
+    "nmd_off_not_present": "<blockquote expandable>🌙 <b>CHẾ ĐỘ BAN ĐÊM — MỞ NHÓM THẤT BẠI</b>\n💬 Nhóm: <code>{chat_id}</code>\n❌ {bname} không còn trong nhóm. Đã xóa nhóm khỏi danh sách.</blockquote>",
+    "nmd_off_err": "<blockquote expandable>🌙 <b>CHẾ ĐỘ BAN ĐÊM — MỞ NHÓM THẤT BẠI</b>\n💬 Nhóm: <code>{chat_id}</code>\n❌ Lỗi: <code>{e}</code></blockquote>",
     "nmd_off_success": "#NIGHTMODE_HANDLER\n📆 {dt}\n\n☀️ Nhóm đang mở.\nSẽ bị đóng lại vào {close_at}",
-    "nmd_on_not_admin": "#NIGHTMODE_FAIL\nKhông thể bật chế độ ban đêm tại `{chat_id}`, vì {bname} không phải là quản trị viên trong trò chuyện `{chat_id}`",
-    "nmd_on_not_present": "#NIGHTMODE_FAIL\nKhông thể bật chế độ ban đêm tại `{chat_id}`, vì {bname} không có mặt trong trò chuyện `{chat_id}`. Đã xóa nhóm khỏi danh sách.",
-    "nmd_on_err": "#NIGHTMODE_FAIL\nKhông thể bật chế độ ban đêm tại `{chat_id}`\nLỖI: `{e}`",
+    "nmd_on_not_admin": "<blockquote expandable>🌙 <b>CHẾ ĐỘ BAN ĐÊM — KHÓA NHÓM THẤT BẠI</b>\n💬 Nhóm: <code>{chat_id}</code>\n❌ {bname} không phải quản trị viên nên không khóa được nhóm.</blockquote>",
+    "nmd_on_not_present": "<blockquote expandable>🌙 <b>CHẾ ĐỘ BAN ĐÊM — KHÓA NHÓM THẤT BẠI</b>\n💬 Nhóm: <code>{chat_id}</code>\n❌ {bname} không còn trong nhóm. Đã xóa nhóm khỏi danh sách.</blockquote>",
+    "nmd_on_err": "<blockquote expandable>🌙 <b>CHẾ ĐỘ BAN ĐÊM — KHÓA NHÓM THẤT BẠI</b>\n💬 Nhóm: <code>{chat_id}</code>\n❌ Lỗi: <code>{e}</code></blockquote>",
     "nmd_on_success": "#NIGHTMODE_HANDLER\n📆 {dt}\n\n🌗 Nhóm đang đóng.\nSẽ được mở vào {open_at}"
 }
