@@ -4,7 +4,7 @@ from functools import wraps
 from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 from pyrogram.types import CallbackQuery
 
-from kaitokid.helper.log_channel import log_block, send_log
+from kaitokid.log_channel import log_block, send_log
 
 
 def capture_err(func):
