@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from logging import getLogger
 from asyncio import gather
@@ -18,18 +19,32 @@ __HELP__ = """
 <blockquote>/webss [URL] - Chụp ảnh màn hình một trang Web.</blockquote>
 """
 
+_DOMAIN_RE = re.compile(r"[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?")
+
+
+def _is_valid_url_or_domain(raw: str) -> bool:
+    """Chỉ nhận link http(s)://... hoặc tên miền (vd google.com).
+
+    Trả về False nếu có khoảng trắng hoặc domain không hợp lệ.
+    """
+    s = raw.strip()
+    if not s or " " in s:
+        return False
+    rest = re.sub(r"^https?://", "", s, flags=re.I)
+    rest = rest.split("/")[0].split("?")[0].split("#")[0]
+    return bool(_DOMAIN_RE.fullmatch(rest))
+
 
 @app.on_cmd("webss")
 @new_task
 @use_chat_lang()
 async def take_ss(_, ctx: Message, strings):
     if len(ctx.command) == 1:
-        return await ctx.reply_msg(strings("no_url"), del_in=6)
-    url = (
-        ctx.command[1]
-        if ctx.command[1].startswith("http")
-        else f"https://{ctx.command[1]}"
-    )
+        return await ctx.reply_msg(strings("no_url"))
+    raw = ctx.command[1].strip()
+    if not _is_valid_url_or_domain(raw):
+        return await ctx.reply_msg(strings("bad_url").format(url=raw))
+    url = raw if raw.startswith("http") else f"https://{raw}"
     # Người gửi có thể là acc thường, bot hoặc kênh.
     sender_id, _ = get_sender(ctx)
     if sender_id is None:
@@ -52,4 +67,5 @@ async def take_ss(_, ctx: Message, strings):
         if os.path.exists(download_file_path):
             os.remove(download_file_path)
     except Exception as e:
-        await msg.edit_msg(strings("ss_failed_str").format(err=str(e)))
+        LOGGER.warning(f"/webss thất bại ({raw}): {e}")
+        await msg.edit_msg(strings("ss_failed_str").format(url=raw))
