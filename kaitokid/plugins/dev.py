@@ -55,6 +55,7 @@ from kaitokid.helper.functions import extract_user, extract_user_and_reason
 from kaitokid.helper.http import fetch
 from kaitokid.helper.human_read import get_readable_file_size, get_readable_time
 from kaitokid.helper.localization import use_chat_lang
+from kaitokid.helper.log_channel import log_block, send_log
 from kaitokid.vars import AUTO_RESTART, COMMAND_HANDLER, LOG_CHANNEL, SUDO
 
 LOGGER = getLogger("KaitoKid")
@@ -218,9 +219,15 @@ async def donate(self: Client, ctx: Message):
             else None,
         )
     except (ChatSendPlainForbidden, ChatSendPhotosForbidden):
-        await self.send_message(
-            LOG_CHANNEL,
-            f"❗️ <b>WARNING</b>\nI'm leaving from {ctx.chat.id} since i didn't have sufficient admin permissions.",
+        send_log(
+            self,
+            log_block(
+                "⚠️ <b>BOT RỜI NHÓM</b>",
+                [
+                    f"💬 Nhóm: <code>{ctx.chat.id}</code>",
+                    "❌ Bot không có quyền gửi tin trong nhóm nên đã rời đi.",
+                ],
+            ),
         )
         await ctx.chat.leave()
 
@@ -359,14 +366,15 @@ async def ban_globally(self: Client, ctx: Message):
             f"Xin chào, Bạn đã bị cấm trên toàn cầu bởi {from_user.mention}, Bạn có thể kháng cáo lệnh cấm này bằng cách nói chuyện với anh ấy.",
         )
     await m.edit(f"Đã cấm {user_mention} toàn cầu!")
-    ban_text = f"""
-__**New Global Ban**__
-**Origin:** {ctx.chat.title} [`{ctx.chat.id}`]
-**Admin:** {from_user.mention}
-**Banned User:** {user_mention}
-**Banned User ID:** `{user_id}`
-**Reason:** __{reason}__
-**Chats:** `{number_of_chats}`"""
+    ban_text = (
+        "<blockquote expandable>🛡️ <b>CẤM TOÀN CẦU</b>\n"
+        f"👤 Người bị cấm: {user_mention} (<code>{user_id}</code>)\n"
+        f"👮 Admin: {from_user.mention}\n"
+        f"💬 Từ nhóm: <b>{ctx.chat.title}</b> (<code>{ctx.chat.id}</code>)\n"
+        f"📝 Lý do: <i>{reason}</i>\n"
+        f"📊 Số nhóm bot đang ở: <b>{number_of_chats}</b>"
+        "</blockquote>"
+    )
     try:
         m2 = await app.send_message(
             LOG_CHANNEL,
@@ -637,11 +645,18 @@ async def updtebot(client, update, users, _):
         niuser = users[update.user_id]
         if update.stopped and await db.is_user_exist(niuser.id):
             await db.delete_user(niuser.id)
-        await client.send_msg(
-            LOG_CHANNEL,
-            f"<a href='tg://user?id={niuser.id}'>{niuser.first_name}</a> (<code>{niuser.id}</code>) "
-            f"{'BLOCKED' if update.stopped else 'UNBLOCKED'} the bot at "
-            f"{datetime.fromtimestamp(update.date)}",
+        send_log(
+            client,
+            log_block(
+                "🚫 <b>NGƯỜI DÙNG CHẶN BOT</b>"
+                if update.stopped
+                else "✅ <b>NGƯỜI DÙNG BỎ CHẶN BOT</b>",
+                [
+                    f"👤 <a href='tg://user?id={niuser.id}'>{niuser.first_name}</a> "
+                    f"(<code>{niuser.id}</code>)",
+                    "⛔ Đã chặn bot." if update.stopped else "✅ Đã bỏ chặn bot.",
+                ],
+            ),
         )
 
 
