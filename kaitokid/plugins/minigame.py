@@ -95,8 +95,9 @@ BC_EMOJI = dict(BC_SYMBOLS)
 
 DICE_FACE = {1: "⚀", 2: "⚁", 3: "⚂", 4: "⚃", 5: "⚄", 6: "⚅"}
 
-TX_AMOUNTS = [5, 50, 500]
-BC_CHIPS = [5, 50, 500]
+MIN_BET = 5000
+TX_AMOUNTS = [5000, 50000, 500000]
+BC_CHIPS = [5000, 50000, 500000]
 
 
 def _fmt(n: int) -> str:
@@ -171,6 +172,7 @@ def _tx_help_text(balance: int) -> str:
         "Lắc 3 xúc xắc 6 mặt, tổng 4–10 là <b>Xỉu</b>, 11–17 là <b>Tài</b>. "
         "Ra 3 con giống nhau là <b>Bão</b>, nhà cái ăn cả hai cửa.\n"
         "Thắng nhận <b>x3</b> tiền cược, thua mất tiền cược.\n"
+        "Cược tối thiểu: <b>5.000</b>.\n"
         f"Số dư của bạn: <b>{_fmt(balance)}</b>\n"
         "Chọn cửa bên dưới để chơi."
         "</blockquote>"
@@ -186,6 +188,12 @@ def _roll_tx():
 
 
 async def _play_tx(message: Message, uid: int, name: str, choice: str, amount: int):
+    if amount < MIN_BET:
+        await message.reply_text(
+            f"Cược tối thiểu là <b>{_fmt(MIN_BET)}</b>.",
+            quote=True,
+        )
+        return
     bal, refilled = await _ensure_playable(uid)
     if amount > bal:
         await message.reply_text(
@@ -995,6 +1003,12 @@ async def game_input_watcher(client, message: Message):
         amount = _parse_amount(message.text, bal)
         if amount is None:
             await message.reply_text("Số tiền không hợp lệ, ván đã hủy.", quote=True)
+            return
+        if amount < MIN_BET:
+            await message.reply_text(
+                f"Cược tối thiểu là <b>{_fmt(MIN_BET)}</b>.",
+                quote=True,
+            )
             return
         if pend["game"] == "tx":
             sess = TX_SESSIONS.get(key)
