@@ -89,7 +89,15 @@ async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None or _pool.is_closing():
         _pool = await asyncpg.create_pool(
-            _dsn(), min_size=1, max_size=10, timeout=30, init=_init_conn
+            _dsn(),
+            min_size=1,
+            # Pool Supabase (session mode) chỉ cho tối đa 15 kết nối.
+            # Để 5 để lúc deploy (2 process chồng nhau) không vượt 15.
+            max_size=5,
+            # Đóng kết nối nhàn rỗi sau 5 phút để trả slot cho pooler.
+            max_inactive_connection_lifetime=300,
+            timeout=30,
+            init=_init_conn,
         )
         await _ensure_schema(_pool)
     return _pool
