@@ -33,6 +33,7 @@ from pyrogram.types import (
 from database.imdb_db import add_imdbset, is_imdbset, remove_imdbset
 from kaitokid import app
 from kaitokid.helper import GENRES_EMOJI, Cache, fetch, get_random_string, search_jw
+from kaitokid.helper.functions import get_sender
 from utils import demoji
 
 LIST_CARI = Cache(filename="imdb_cache.db", path="cache", in_memory=False)
@@ -47,11 +48,18 @@ async def imdb_choose(_, ctx: Message):
             f"ℹ Vui lòng thêm truy vấn sau CMD!\nVD: <code>/{ctx.command[0]} Jurassic World</code>",
             del_in=7,
         )
-    if ctx.sender_chat:
-        return await ctx.reply_msg(
-            "Không thể xác định người dùng, vui lòng sử dụng trong cuộc trò chuyện riêng tư.", del_in=7
-        )
+    # Người gửi có thể là acc thường, bot hoặc kênh.
+    sender_id, sender_name = get_sender(ctx)
+    if sender_id is None:
+        return
     kuery = ctx.text.split(None, 1)[1]
+    # Kênh: bỏ qua picker ngôn ngữ (người bấm nút là user thật, id không khớp
+    # id kênh) — dùng ngôn ngữ đã lưu theo kênh, chưa có thì mặc định Tiếng Việt.
+    if ctx.sender_chat:
+        is_imdb, lang = await is_imdbset(sender_id)
+        if is_imdb and lang == "eng":
+            return await imdb_search_en(kuery, ctx)
+        return await imdb_search_vi(kuery, ctx)
     is_imdb, lang = await is_imdbset(ctx.from_user.id)
     if is_imdb:
         if lang == "eng":
