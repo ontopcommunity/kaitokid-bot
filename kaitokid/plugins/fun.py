@@ -77,7 +77,7 @@ async def reaction_update(self, ctx):
     self.log.info(ctx)
 
 # Đường dẫn tới file GIF
-GIF_PATH = "/www/wwwroot/tiensi-teo-bot/assets/tungxu.gif"
+GIF_PATH = "assets/tungxu.gif"
 
 # Hàm xử lý khi người dùng gõ lệnh /coin
 @app.on_message(filters.command("tungxu", COMMAND_HANDLER))
