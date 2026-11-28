@@ -8,6 +8,7 @@ from pySmartDL import SmartDL
 
 from kaitokid import app
 from kaitokid.core.decorator import new_task
+from kaitokid.helper.functions import get_sender
 from kaitokid.helper.localization import use_chat_lang
 
 LOGGER = getLogger("KaitoKid")
@@ -29,7 +30,11 @@ async def take_ss(_, ctx: Message, strings):
         if ctx.command[1].startswith("http")
         else f"https://{ctx.command[1]}"
     )
-    download_file_path = os.path.join("downloads/", f"webSS_{ctx.from_user.id}.png")
+    # Người gửi có thể là acc thường, bot hoặc kênh.
+    sender_id, _ = get_sender(ctx)
+    if sender_id is None:
+        return
+    download_file_path = os.path.join("downloads/", f"webSS_{abs(sender_id)}.png")
     msg = await ctx.reply_msg(strings("wait_str"))
     try:
         url = f"https://webss.yasirweb.eu.org/api/screenshot?resX=1280&resY=900&outFormat=jpg&waitTime=1000&isFullPage=false&dismissModals=false&url={url}"
