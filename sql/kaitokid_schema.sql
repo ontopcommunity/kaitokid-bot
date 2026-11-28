@@ -155,3 +155,11 @@ CREATE TABLE IF NOT EXISTS kk_warns (
 CREATE TABLE IF NOT EXISTS kk_autoapprove (
     chat_id BIGINT PRIMARY KEY
 );
+
+-- game_balance: số dư mini game (tài xỉu, bầu cua, nối từ, vòng xoay, gift).
+-- Người chơi mới được cấp 500.000.
+CREATE TABLE IF NOT EXISTS kk_game_balance (
+    user_id BIGINT PRIMARY KEY,
+    balance BIGINT NOT NULL DEFAULT 500000,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
