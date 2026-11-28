@@ -4,7 +4,7 @@ from functools import wraps
 from pyrogram.errors.exceptions.forbidden_403 import ChatWriteForbidden
 from pyrogram.types import CallbackQuery
 
-from kaitokid.log_channel import log_block, send_log
+from kaitokid.log_channel import delete_after, log_block, send_log
 
 
 def capture_err(func):
@@ -42,9 +42,12 @@ def capture_err(func):
                     ],
                 ),
             )
-            await sender(
+            sent = await sender(
                 "😭 Bot gặp lỗi khi xử lý lệnh của bạn, mình đã gửi nhật ký cho admin rồi. Xin lỗi vì sự bất tiện này..."
             )
+            if sent:
+                # Tin lỗi tự xóa sau 2 phút (cho mọi người).
+                delete_after(client, sent.chat.id, sent.id)
             raise err
 
     return capture
