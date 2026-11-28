@@ -27,6 +27,7 @@ from kaitokid.core.keyboard import ikb
 from kaitokid.helper.functions import (
     extract_user,
     extract_user_and_reason,
+    get_sender,
     int_to_alpha,
     time_converter,
 )
@@ -751,8 +752,13 @@ async def unban_user(_, cq, strings):
 async def remove_warnings(_, message, strings):
     if not message.reply_to_message:
         return await message.reply_text(strings("reply_to_rm_warn"))
-    user_id = message.reply_to_message.from_user.id
-    mention = message.reply_to_message.from_user.mention
+    # Người bị gỡ cảnh báo có thể là acc thường, bot hoặc kênh.
+    user_id, user_name = get_sender(message.reply_to_message)
+    if user_id is None:
+        return await message.reply_text(strings("reply_to_rm_warn"))
+    mention = user_name
+    if message.reply_to_message.from_user:
+        mention = message.reply_to_message.from_user.mention
     chat_id = message.chat.id
     warns = await get_warn(chat_id, await int_to_alpha(user_id))
     if warns:
@@ -875,7 +881,12 @@ async def set_chat_photo(_, ctx: Message):
 
 @app.on_message(filters.group & filters.command("tagall", COMMAND_HANDLER))
 async def mentionall(app: Client, msg: Message):
-    user = await msg.chat.get_member(msg.from_user.id)
+    # Người gọi có thể là acc thường, bot hoặc kênh — kiểm tra quyền admin
+    # bằng id người/kênh gửi.
+    sender_id, _ = get_sender(msg)
+    if sender_id is None:
+        return
+    user = await msg.chat.get_member(sender_id)
     if user.status in (
         enums.ChatMemberStatus.OWNER,
         enums.ChatMemberStatus.ADMINISTRATOR,
