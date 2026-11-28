@@ -27,7 +27,7 @@ from database import game_db
 from kaitokid import app
 from kaitokid.core.decorator import new_task
 from kaitokid.helper.functions import get_sender
-from kaitokid.vars import COMMAND_HANDLER
+from kaitokid.vars import COMMAND_HANDLER, SUDO
 
 LOGGER = getLogger("KaitoKid")
 
@@ -98,6 +98,18 @@ DICE_FACE = {1: "⚀", 2: "⚁", 3: "⚂", 4: "⚃", 5: "⚄", 6: "⚅"}
 MIN_BET = 5000
 TX_AMOUNTS = [5000, 50000, 500000]
 BC_CHIPS = [5000, 50000, 500000]
+OWNER_BAL = 10**15  # Số dư chủ bot (hiển thị 'Vô hạn')
+
+
+def _is_owner(uid: int) -> bool:
+    return uid in SUDO
+
+
+def _fmt_bal(uid: int, bal: int) -> str:
+    """Hiển thị số dư: chủ bot là Vô hạn, người khác là số thường."""
+    if _is_owner(uid) or bal >= OWNER_BAL:
+        return "Vô hạn"
+    return _fmt(bal)
 
 
 def _fmt(n: int) -> str:
@@ -105,23 +117,38 @@ def _fmt(n: int) -> str:
 
 
 def _parse_amount(text: str, balance: int):
-    """'5', '50', '500', 'all', '1k', '2m' -> số tiền, None nếu sai."""
-    t = text.strip().lower().replace(".", "").replace(",", "")
+    """'5', '5.000', '5k', '1.5m', '1b', '2t', 'all' -> số tiền, None nếu sai.
+
+    k = nghìn, m = triệu, b/t = tỷ. Có hậu tố thì . hoặc , là dấu thập phân
+    (1.5m = 1.500.000); không hậu tố thì . hoặc , là phân tách nghìn (5.000 = 5000).
+    """
+    t = text.strip().lower()
     if t in ("all", "tatca", "tất cả", "het", "hết"):
         return balance if balance > 0 else None
-    m = re.fullmatch(r"(\d+)\s*([km]?)", t)
+    m = re.fullmatch(r"([\d.,]+)\s*([kmbt]?)", t)
     if not m:
         return None
-    n = int(m.group(1))
-    if m.group(2) == "k":
-        n *= 1000
-    elif m.group(2) == "m":
-        n *= 1000000
+    num_txt, suf = m.group(1), m.group(2)
+    if suf:
+        if num_txt.count(".") + num_txt.count(",") > 1:
+            return None
+        mult = {"k": 1000, "m": 1000000, "b": 1000000000, "t": 1000000000}[suf]
+        n = int(float(num_txt.replace(",", ".")) * mult)
+    else:
+        n = int(num_txt.replace(".", "").replace(",", ""))
     return n if n > 0 else None
 
 
 async def _ensure_playable(user_id: int):
-    """Hết tiền thì cấp lại 500k để chơi tiếp. Trả về (số dư, vừa_cấp)."""
+    """Hết tiền thì cấp lại 500k để chơi tiếp. Trả về (số dư, vừa_cấp).
+
+    Chủ bot luôn có số dư OWNER_BAL (hiển thị Vô hạn).
+    """
+    if _is_owner(user_id):
+        bal = await game_db.get_balance(user_id)
+        if bal < OWNER_BAL:
+            bal = await game_db.add_balance(user_id, OWNER_BAL - bal)
+        return bal, False
     bal = await game_db.get_balance(user_id)
     if bal <= 0:
         bal = await game_db.add_balance(user_id, game_db.START_BALANCE)
@@ -165,15 +192,17 @@ def _tx_kb(uid: int, stage: str, choice: str = ""):
     ])
 
 
-def _tx_help_text(balance: int) -> str:
+def _tx_help_text(uid: int, balance: int, name: str = "") -> str:
+    who = f"👤 Người chơi: <b>{name}</b>\n" if name else ""
     return (
         "<blockquote expandable>"
         "🎲 <b>TÀI XỈU</b>\n"
+        f"{who}"
         "Lắc 3 xúc xắc 6 mặt, tổng 4–10 là <b>Xỉu</b>, 11–17 là <b>Tài</b>. "
         "Ra 3 con giống nhau là <b>Bão</b>, nhà cái ăn cả hai cửa.\n"
         "Thắng nhận <b>x3</b> tiền cược, thua mất tiền cược.\n"
         "Cược tối thiểu: <b>5.000</b>.\n"
-        f"Số dư của bạn: <b>{_fmt(balance)}</b>\n"
+        f"Số dư: <b>{_fmt_bal(uid, balance)}</b>\n"
         "Chọn cửa bên dưới để chơi."
         "</blockquote>"
     )
@@ -197,7 +226,7 @@ async def _play_tx(message: Message, uid: int, name: str, choice: str, amount: i
     bal, refilled = await _ensure_playable(uid)
     if amount > bal:
         await message.reply_text(
-            f"Không đủ số dư! Bạn có {_fmt(bal)}, cược tối đa {_fmt(bal)}.",
+            f"Không đủ số dư! Bạn có {_fmt_bal(uid, bal)}, cược tối đa {_fmt_bal(uid, bal)}.",
             quote=True,
         )
         return
@@ -219,15 +248,17 @@ async def _play_tx(message: Message, uid: int, name: str, choice: str, amount: i
     res_name = {"tai": "Tài", "xiu": "Xỉu", "bao": "Bão"}[result]
     choice_name = "Tài" if choice == "tai" else "Xỉu"
     refill_txt = "\n💸 Hết tiền nên bot cấp lại 500.000 để chơi tiếp." if refilled else ""
+    who = f"👤 Người chơi: <b>{name}</b>\n" if name else ""
     text = (
         "<blockquote expandable>"
         "🎲 <b>KẾT QUẢ TÀI XỈU</b>\n"
+        f"{who}"
         f"{faces}  ({d[0]} - {d[1]} - {d[2]})\n"
         f"Tổng: <b>{total}</b> → <b>{res_name}</b>\n"
         f"Bạn cược: <b>{choice_name} {_fmt(amount)}</b>\n"
         f"{outcome} ({delta_txt})\n"
-        f"Số dư cũ: {_fmt(old)}\n"
-        f"Số dư mới: <b>{_fmt(new)}</b>{refill_txt}"
+        f"Số dư cũ: {_fmt_bal(uid, old)}\n"
+        f"Số dư mới: <b>{_fmt_bal(uid, new)}</b>{refill_txt}"
         "</blockquote>"
     )
     await message.reply_text(text, reply_markup=_tx_kb(uid, "after"), quote=True)
@@ -258,7 +289,7 @@ async def tx_cmd(client, message: Message):
         return
     # /tx không tham số: hiện hướng dẫn + chọn cửa
     await message.reply_text(
-        _tx_help_text(bal), reply_markup=_tx_kb(uid, "choice"), quote=True
+        _tx_help_text(uid, bal, name), reply_markup=_tx_kb(uid, "choice"), quote=True
     )
 
 
@@ -280,18 +311,22 @@ async def tx_callback(client, query: CallbackQuery):
     if action == "c":
         choice = parts[2]
         TX_SESSIONS[key] = {"choice": choice, "amount": None}
-        name = "Tài" if choice == "tai" else "Xỉu"
+        cname = "Tài" if choice == "tai" else "Xỉu"
+        pname = await _resolve_name(client, uid)
         bal, _ = await _ensure_playable(uid)
         await query.edit_message_text(
-            f"<blockquote expandable>🎲 Bạn chọn cửa <b>{name}</b>.\n"
-            f"Số dư: <b>{_fmt(bal)}</b>\nChọn số tiền cược bên dưới.</blockquote>",
+            f"<blockquote expandable>🎲 <b>TÀI XỈU</b>\n"
+            f"👤 Người chơi: <b>{pname}</b>\n"
+            f"Bạn chọn cửa <b>{cname}</b>.\n"
+            f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\nChọn số tiền cược bên dưới.</blockquote>",
             reply_markup=_tx_kb(uid, "amount", choice),
         )
         return
     if action == "back":
         bal, _ = await _ensure_playable(uid)
+        pname = await _resolve_name(client, uid)
         await query.edit_message_text(
-            _tx_help_text(bal), reply_markup=_tx_kb(uid, "choice")
+            _tx_help_text(uid, bal, pname), reply_markup=_tx_kb(uid, "choice")
         )
         return
     if action == "a":
@@ -301,8 +336,9 @@ async def tx_callback(client, query: CallbackQuery):
             return
         bal, _ = await _ensure_playable(uid)
         amount = bal if parts[2] == "all" else int(parts[2])
+        pname = await _resolve_name(client, uid)
         await query.message.delete()
-        await _play_tx(query.message, uid, "", sess["choice"], amount)
+        await _play_tx(query.message, uid, pname, sess["choice"], amount)
         TX_SESSIONS.pop(key, None)
         return
     if action == "cu":
@@ -313,7 +349,7 @@ async def tx_callback(client, query: CallbackQuery):
         PENDING_CUSTOM[key] = {"game": "tx"}
         await query.edit_message_text(
             "<blockquote expandable>✏️ Nhập số tiền cược muốn đặt "
-            "(gõ số, ví dụ <code>100</code>, <code>1k</code>, <code>all</code>).</blockquote>",
+            "(gõ số, ví dụ <code>5k</code>, <code>1m</code>, <code>1b</code>, <code>all</code>).</blockquote>",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("❌ Hủy", callback_data=f"tx:x:{uid}")]
             ]),
@@ -321,8 +357,9 @@ async def tx_callback(client, query: CallbackQuery):
         return
     if action == "again":
         bal, _ = await _ensure_playable(uid)
+        pname = await _resolve_name(client, uid)
         await query.edit_message_text(
-            _tx_help_text(bal), reply_markup=_tx_kb(uid, "choice")
+            _tx_help_text(uid, bal, pname), reply_markup=_tx_kb(uid, "choice")
         )
         return
 
@@ -357,14 +394,18 @@ def _bc_kb(uid: int, bets: dict, chip: int):
     return InlineKeyboardMarkup(rows)
 
 
-def _bc_text(uid: int, bets: dict, chip: int, balance: int) -> str:
+def _bc_text(uid: int, bets: dict, chip: int, balance: int, name: str = "") -> str:
     total = sum(bets.values())
     lines = [
         "<blockquote expandable>🦀 <b>BẦU CUA TÔM CÁ</b>",
+    ]
+    if name:
+        lines.append(f"👤 Người chơi: <b>{name}</b>")
+    lines += [
         "Bấm vào ô để đặt cược theo mức đang chọn. "
         "Bấm bao nhiêu lần cũng được, tiền cộng dồn theo từng ô.",
         f"Mức cược đang chọn: <b>{_fmt(chip)}</b>",
-        f"Đã đặt: <b>{_fmt(total)}</b>  •  Số dư: <b>{_fmt(balance)}</b>",
+        f"Đã đặt: <b>{_fmt(total)}</b>  •  Số dư: <b>{_fmt_bal(uid, balance)}</b>",
     ]
     if bets:
         lines.append("—")
@@ -384,9 +425,9 @@ async def bc_cmd(client, message: Message):
         return
     bal, _ = await _ensure_playable(uid)
     key = (message.chat.id, uid)
-    BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": None, "start_bal": bal}
+    BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": None, "start_bal": bal, "name": name}
     sent = await message.reply_text(
-        _bc_text(uid, {}, BC_CHIPS[0], bal),
+        _bc_text(uid, {}, BC_CHIPS[0], bal, name),
         reply_markup=_bc_kb(uid, {}, BC_CHIPS[0]),
         quote=True,
     )
@@ -418,7 +459,7 @@ async def bc_callback(client, query: CallbackQuery):
         bal, _ = await _ensure_playable(uid)
         sess["chip"] = bal if parts[2] == "all" else int(parts[2])
         await query.edit_message_text(
-            _bc_text(uid, sess["bets"], sess["chip"], bal),
+            _bc_text(uid, sess["bets"], sess["chip"], bal, sess.get("name", "")),
             reply_markup=_bc_kb(uid, sess["bets"], sess["chip"]),
         )
         return
@@ -435,14 +476,14 @@ async def bc_callback(client, query: CallbackQuery):
             return
         if chip > bal:
             await query.answer(
-                f"Không đủ số dư! Bạn còn {_fmt(bal)}.", show_alert=True
+                f"Không đủ số dư! Bạn còn {_fmt_bal(uid, bal)}.", show_alert=True
             )
             return
         await game_db.add_balance(uid, -chip)
         sess["bets"][symbol] = sess["bets"].get(symbol, 0) + chip
         bal -= chip
         await query.edit_message_text(
-            _bc_text(uid, sess["bets"], sess["chip"], bal),
+            _bc_text(uid, sess["bets"], sess["chip"], bal, sess.get("name", "")),
             reply_markup=_bc_kb(uid, sess["bets"], sess["chip"]),
         )
         return
@@ -471,14 +512,17 @@ async def bc_callback(client, query: CallbackQuery):
         net = total_back - total_bet
         faces = " ".join(BC_EMOJI[k] for k in dice)
         verdict = "🎉 <b>THẮNG!</b>" if net > 0 else ("😐 <b>HÒA!</b>" if net == 0 else "💔 <b>THUA!</b>")
+        pname = sess.get("name", "")
+        who = f"👤 Người chơi: <b>{pname}</b>\n" if pname else ""
         text = (
             "<blockquote expandable>🦀 <b>KẾT QUẢ BẦU CUA</b>\n"
+            f"{who}"
             f"{faces}\n"
             + "\n".join(detail)
             + f"\n{verdict} ({'+' if net >= 0 else ''}{_fmt(net)})\n"
             f"Tổng cược: {_fmt(total_bet)}  •  Nhận lại: {_fmt(total_back)}\n"
-            f"Số dư cũ: {_fmt(old)}\n"
-            f"Số dư mới: <b>{_fmt(new)}</b>"
+            f"Số dư cũ: {_fmt_bal(uid, old)}\n"
+            f"Số dư mới: <b>{_fmt_bal(uid, new)}</b>"
             "</blockquote>"
         )
         BC_SESSIONS.pop(key, None)
@@ -528,7 +572,7 @@ async def noitu_cmd(client, message: Message):
             bal = await game_db.get_balance(uid)
             await message.reply_text(
                 f"🔤 Dừng nối từ. Chuỗi đúng liên tiếp: <b>{sess['streak']}</b>. "
-                f"Số dư: <b>{_fmt(bal)}</b>.",
+                f"Số dư: <b>{_fmt_bal(uid, bal)}</b>.",
                 quote=True,
             )
         else:
@@ -542,14 +586,16 @@ async def noitu_cmd(client, message: Message):
         "used": {start},
         "streak": 0,
         "ts": time.time(),
+        "name": name,
     }
     await message.reply_text(
         "<blockquote expandable>🔤 <b>NỐI TỪ</b>\n"
+        f"👤 Người chơi: <b>{name}</b>\n"
         f"Bot ra từ: <b>{start}</b>\n"
         "Bạn nối tiếp bằng từ có âm đầu = âm cuối của từ trên. "
         "Từ phải có trong từ điển, không được trùng từ đã dùng.\n"
         f"Mỗi câu đúng thưởng <b>5%</b> số dư hiện tại. "
-        f"Số dư: <b>{_fmt(bal)}</b>\n"
+        f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
         "Gõ từ tiếp theo vào khung chat. Gõ <code>/noitu dung</code> để dừng."
         "</blockquote>",
         quote=True,
@@ -576,6 +622,7 @@ async def _noitu_play(client, message: Message, uid: int, raw: str):
         NT_SESSIONS.pop(key, None)
         await message.reply_text(
             "<blockquote expandable>🔤 <b>THUA!</b>\n"
+            f"👤 Người chơi: <b>{sess.get('name', '')}</b>\n"
             f"Từ <b>{raw.strip()}</b> không có trong từ điển.\n"
             f"Chuỗi đúng liên tiếp: <b>{sess['streak']}</b>. Gõ /noitu để chơi lại."
             "</blockquote>",
@@ -586,6 +633,7 @@ async def _noitu_play(client, message: Message, uid: int, raw: str):
         NT_SESSIONS.pop(key, None)
         await message.reply_text(
             "<blockquote expandable>🔤 <b>THUA!</b>\n"
+            f"👤 Người chơi: <b>{sess.get('name', '')}</b>\n"
             f"Từ <b>{word}</b> đã dùng rồi.\n"
             f"Chuỗi đúng liên tiếp: <b>{sess['streak']}</b>. Gõ /noitu để chơi lại."
             "</blockquote>",
@@ -596,6 +644,7 @@ async def _noitu_play(client, message: Message, uid: int, raw: str):
         NT_SESSIONS.pop(key, None)
         await message.reply_text(
             "<blockquote expandable>🔤 <b>THUA!</b>\n"
+            f"👤 Người chơi: <b>{sess.get('name', '')}</b>\n"
             f"Từ phải bắt đầu bằng âm <b>{last}</b> (âm cuối của <b>{cur}</b>).\n"
             f"Chuỗi đúng liên tiếp: <b>{sess['streak']}</b>. Gõ /noitu để chơi lại."
             "</blockquote>",
@@ -604,17 +653,19 @@ async def _noitu_play(client, message: Message, uid: int, raw: str):
         return True
     # Đúng: thưởng 5% số dư, bot nối tiếp.
     bal = await game_db.get_balance(uid)
-    reward = max(10, int(bal * 0.05))
-    new = await game_db.add_balance(uid, reward)
+    reward = max(10, int(bal * 0.05)) if not _is_owner(uid) else 0
+    new = await game_db.add_balance(uid, reward) if reward else bal
     sess["used"].add(word)
     sess["streak"] += 1
     nxt = _bot_pick(word.split()[1], sess["used"])
     if nxt is None:
         NT_SESSIONS.pop(key, None)
+        reward_txt = f"Thưởng: +{_fmt(reward)}  •  " if not _is_owner(uid) else ""
         await message.reply_text(
             "<blockquote expandable>🔤 <b>BẠN THẮNG VÁN NÀY!</b>\n"
+            f"👤 Người chơi: <b>{sess.get('name', '')}</b>\n"
             f"Từ <b>{word}</b> đúng, bot không còn từ nào để nối tiếp.\n"
-            f"Thưởng: +{_fmt(reward)}  •  Số dư mới: <b>{_fmt(new)}</b>\n"
+            f"{reward_txt}Số dư mới: <b>{_fmt_bal(uid, new)}</b>\n"
             f"Chuỗi đúng liên tiếp: <b>{sess['streak']}</b>. Gõ /noitu để chơi lại."
             "</blockquote>",
             quote=True,
@@ -622,9 +673,10 @@ async def _noitu_play(client, message: Message, uid: int, raw: str):
         return True
     sess["current"] = nxt
     sess["used"].add(nxt)
+    reward_txt = f"+{_fmt(reward)} (5% số dư)  •  " if not _is_owner(uid) else ""
     await message.reply_text(
         "<blockquote expandable>🔤 <b>ĐÚNG!</b> "
-        f"+{_fmt(reward)} (5% số dư)  •  Số dư: <b>{_fmt(new)}</b>\n"
+        f"{reward_txt}Số dư: <b>{_fmt_bal(uid, new)}</b>\n"
         f"Bot nối: <b>{nxt}</b> — tới lượt bạn."
         "</blockquote>",
         quote=True,
@@ -678,10 +730,14 @@ def _lucky_kb(uid: int, spinning: bool = False):
     ])
 
 
-def _lucky_menu_text(balance: int) -> str:
+def _lucky_menu_text(uid: int, balance: int, name: str = "") -> str:
     lines = [
         "<blockquote expandable>🎡 <b>VÒNG XOAY MAY MẮN</b>",
-        f"Số dư: <b>{_fmt(balance)}</b>",
+    ]
+    if name:
+        lines.append(f"👤 Người chơi: <b>{name}</b>")
+    lines += [
+        f"Số dư: <b>{_fmt_bal(uid, balance)}</b>",
         "Các ô trên vòng xoay:",
     ]
     for _k, w, label in LUCKY_SLOTS:
@@ -698,7 +754,7 @@ async def lucky_cmd(client, message: Message):
         return
     bal, _ = await _ensure_playable(uid)
     await message.reply_text(
-        _lucky_menu_text(bal), reply_markup=_lucky_kb(uid), quote=True
+        _lucky_menu_text(uid, bal, name), reply_markup=_lucky_kb(uid), quote=True
     )
 
 
@@ -716,8 +772,11 @@ async def lucky_callback(client, query: CallbackQuery):
         return
     if action == "spin":
         bal, _ = await _ensure_playable(uid)
+        pname = await _resolve_name(client, uid)
         await query.edit_message_text(
-            "<blockquote expandable>🎡 Đang quay...\n"
+            f"<blockquote expandable>🎡 <b>VÒNG XOAY MAY MẮN</b>\n"
+            f"👤 Người chơi: <b>{pname}</b>\n"
+            "Đang quay...\n"
             "🎡 🎡 🎡</blockquote>",
         )
         await asyncio.sleep(1.2)
@@ -748,10 +807,11 @@ async def lucky_callback(client, query: CallbackQuery):
             delta = "0"
         text = (
             "<blockquote expandable>🎡 <b>KẾT QUẢ VÒNG XOAY</b>\n"
+            f"👤 Người chơi: <b>{pname}</b>\n"
             f"Ô trúng: <b>{label}</b>\n"
             f"Kết quả: <b>{delta}</b>\n"
-            f"Số dư cũ: {_fmt(old)}\n"
-            f"Số dư mới: <b>{_fmt(new)}</b>"
+            f"Số dư cũ: {_fmt_bal(uid, old)}\n"
+            f"Số dư mới: <b>{_fmt_bal(uid, new)}</b>"
             "</blockquote>"
         )
         await query.edit_message_text(
@@ -783,10 +843,12 @@ def _menu_kb(uid: int):
     ])
 
 
-def _menu_text(balance: int) -> str:
+def _menu_text(uid: int, balance: int, name: str = "") -> str:
+    who = f"👤 Người chơi: <b>{name}</b>\n" if name else ""
     return (
         "<blockquote expandable>🎮 <b>MENU TRÒ CHƠI</b>\n"
-        f"Số dư của bạn: <b>{_fmt(balance)}</b>\n"
+        f"{who}"
+        f"Số dư: <b>{_fmt_bal(uid, balance)}</b>\n"
         "Chọn một trò để chơi:\n"
         "🎲 <b>Tài xỉu</b> — /tx\n"
         "🦀 <b>Bầu cua</b> — /bc\n"
@@ -805,7 +867,7 @@ async def menu_cmd(client, message: Message):
     if uid is None:
         return
     bal, _ = await _ensure_playable(uid)
-    await message.reply_text(_menu_text(bal), reply_markup=_menu_kb(uid), quote=True)
+    await message.reply_text(_menu_text(uid, bal, name), reply_markup=_menu_kb(uid), quote=True)
 
 
 @app.on_callback_query(filters.regex(r"^mg:"))
@@ -818,33 +880,37 @@ async def menu_callback(client, query: CallbackQuery):
         await query.answer("Đây không phải menu của bạn!", show_alert=True)
         return
     bal, _ = await _ensure_playable(uid)
+    pname = await _resolve_name(client, uid)
     if action == "tx":
-        await query.edit_message_text(_tx_help_text(bal), reply_markup=_tx_kb(uid, "choice"))
+        await query.edit_message_text(_tx_help_text(uid, bal, pname), reply_markup=_tx_kb(uid, "choice"))
     elif action == "bc":
         key = (query.message.chat.id, uid)
-        BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": query.message.id, "start_bal": bal}
+        BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": query.message.id, "start_bal": bal, "name": pname}
         await query.edit_message_text(
-            _bc_text(uid, {}, BC_CHIPS[0], bal),
+            _bc_text(uid, {}, BC_CHIPS[0], bal, pname),
             reply_markup=_bc_kb(uid, {}, BC_CHIPS[0]),
         )
     elif action == "noitu":
         start = random.choice(list(_WORDS))
         key = (query.message.chat.id, uid)
-        NT_SESSIONS[key] = {"current": start, "used": {start}, "streak": 0, "ts": time.time()}
+        NT_SESSIONS[key] = {"current": start, "used": {start}, "streak": 0, "ts": time.time(), "name": pname}
         await query.edit_message_text(
             "<blockquote expandable>🔤 <b>NỐI TỪ</b>\n"
+            f"👤 Người chơi: <b>{pname}</b>\n"
             f"Bot ra từ: <b>{start}</b>\n"
             "Bạn nối tiếp bằng từ có âm đầu = âm cuối của từ trên. "
             "Mỗi câu đúng thưởng <b>5%</b> số dư hiện tại. "
+            f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
             "Gõ từ tiếp theo vào khung chat.</blockquote>"
         )
     elif action == "lucky":
-        await query.edit_message_text(_lucky_menu_text(bal), reply_markup=_lucky_kb(uid))
+        await query.edit_message_text(_lucky_menu_text(uid, bal, pname), reply_markup=_lucky_kb(uid))
     elif action == "sodu":
         rank = await game_db.get_rank(uid)
         await query.edit_message_text(
             "<blockquote expandable>💰 <b>SỐ DƯ</b>\n"
-            f"Số dư: <b>{_fmt(bal)}</b>\n"
+            f"👤 Người chơi: <b>{pname}</b>\n"
+            f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
             f"Hạng: <b>#{rank}</b> toàn bot</blockquote>",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("⬅️ Menu", callback_data=f"mg:back:{uid}")]
@@ -858,7 +924,7 @@ async def menu_callback(client, query: CallbackQuery):
             ]),
         )
     elif action == "back":
-        await query.edit_message_text(_menu_text(bal), reply_markup=_menu_kb(uid))
+        await query.edit_message_text(_menu_text(uid, bal, pname), reply_markup=_menu_kb(uid))
 
 
 _NAME_CACHE = {}
@@ -890,11 +956,11 @@ async def _bxh_text(client, uid: int) -> str:
         name = await _resolve_name(client, row["user_id"])
         medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
         mark = " 👈 bạn" if row["user_id"] == uid else ""
-        lines.append(f"{medal} {name} — <b>{_fmt(row['balance'])}</b>{mark}")
+        lines.append(f"{medal} {name} — <b>{_fmt_bal(row['user_id'], row['balance'])}</b>{mark}")
     rank = await game_db.get_rank(uid)
     bal = await game_db.get_balance(uid)
     if rank and rank > 10:
-        lines.append(f"—\nHạng của bạn: <b>#{rank}</b> — {_fmt(bal)}")
+        lines.append(f"—\nHạng của bạn: <b>#{rank}</b> — {_fmt_bal(uid, bal)}")
     lines.append("</blockquote>")
     return "\n".join(lines)
 
@@ -919,7 +985,8 @@ async def sodu_cmd(client, message: Message):
     extra = "\n💸 Hết tiền nên bot cấp lại 500.000." if refilled else ""
     await message.reply_text(
         f"<blockquote expandable>💰 <b>SỐ DƯ</b>\n"
-        f"Số dư: <b>{_fmt(bal)}</b>\n"
+        f"👤 Người chơi: <b>{name}</b>\n"
+        f"Số dư: <b>{_fmt_bal(uid, bal)}</b>\n"
         f"Hạng: <b>#{rank}</b> toàn bot{extra}</blockquote>",
         quote=True,
     )
@@ -973,15 +1040,15 @@ async def gift_cmd(client, message: Message):
         return
     ok, reason, sender_new, receiver_new = await game_db.transfer(uid, target_id, amount)
     if not ok:
-        await message.reply_text(f"❌ {reason} Số dư của bạn: {_fmt(bal)}.", quote=True)
+        await message.reply_text(f"❌ {reason} Số dư của bạn: {_fmt_bal(uid, bal)}.", quote=True)
         return
     recv_name = await _resolve_name(client, target_id)
     await message.reply_text(
         "<blockquote expandable>🎁 <b>TẶNG TIỀN THÀNH CÔNG</b>\n"
         f"Người nhận: <b>{recv_name}</b>\n"
         f"Số tiền: <b>{_fmt(amount)}</b>\n"
-        f"Số dư của bạn còn: <b>{_fmt(sender_new)}</b>\n"
-        f"Số dư người nhận: <b>{_fmt(receiver_new)}</b>"
+        f"Số dư của bạn còn: <b>{_fmt_bal(uid, sender_new)}</b>\n"
+        f"Số dư người nhận: <b>{_fmt_bal(target_id, receiver_new)}</b>"
         "</blockquote>",
         quote=True,
     )
