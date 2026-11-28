@@ -10,7 +10,8 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from database.users_chats_db import db
 from kaitokid import app
 from kaitokid.helper.localization import use_chat_lang
-from kaitokid.vars import COMMAND_HANDLER, LOG_CHANNEL, SUDO, SUPPORT_CHAT
+from kaitokid.helper.log_channel import send_log
+from kaitokid.vars import COMMAND_HANDLER, SUDO, SUPPORT_CHAT
 
 LOGGER = getLogger("KaitoKid")
 
@@ -37,8 +38,8 @@ async def grp_bd(self: Client, ctx: Message, strings):
         except ChannelPrivate:
             await ctx.stop_propagation()
         r_j = ctx.from_user.mention if ctx.from_user else "Anonymous"
-        await self.send_message(
-            LOG_CHANNEL,
+        send_log(
+            self,
             strings("log_bot_added", context="grup_tools").format(
                 ttl=ctx.chat.title, cid=ctx.chat.id, tot=total, r_j=r_j
             ),
