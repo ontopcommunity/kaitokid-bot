@@ -7,6 +7,7 @@ from pyrogram import filters
 from pyrogram.types import Message
 from kaitokid import app
 from kaitokid.core.decorator.errors import capture_err
+from kaitokid.helper.functions import get_sender
 from kaitokid.vars import COMMAND_HANDLER
 from database.funny_db import can_use_command, update_user_command_usage
 
@@ -129,10 +130,14 @@ async def process_command(ctx: Message, command_type: str):
     )
 
     try:
-        # Lấy thông tin người gửi
-        sender_id = ctx.from_user.id
-        sender_name = ctx.from_user.first_name
-        sender_mention = ctx.from_user.mention
+        # Lấy thông tin người gửi (chạy cả acc thường, bot, acc dùng kênh).
+        sender_id, sender_name = get_sender(ctx)
+        if sender_id is None:
+            return
+        # Kênh có ID âm: không dùng .mention được, chỉ hiện tên.
+        sender_mention = sender_name
+        if ctx.from_user:
+            sender_mention = ctx.from_user.mention
         chat_id = ctx.chat.id
 
         # Kiểm tra xem người gửi có thể sử dụng lệnh không
@@ -145,10 +150,13 @@ async def process_command(ctx: Message, command_type: str):
         # Kiểm tra xem có trả lời tin nhắn hợp lệ không
         target_name = None
         target_mention = None
-        if ctx.reply_to_message and ctx.reply_to_message.from_user:
-            target_name = ctx.reply_to_message.from_user.first_name
-            target_mention = ctx.reply_to_message.from_user.mention
-        else:
+        if ctx.reply_to_message:
+            target_id, target_name = get_sender(ctx.reply_to_message)
+            if target_id is not None:
+                target_mention = target_name
+                if ctx.reply_to_message.from_user:
+                    target_mention = ctx.reply_to_message.from_user.mention
+        if target_name is None:
             # Lấy tên từ tham số lệnh
             command, *args = ctx.text.split(" ", 1)
             if args and args[0].strip():
