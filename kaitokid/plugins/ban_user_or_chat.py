@@ -10,7 +10,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from database.users_chats_db import db
 from kaitokid import app
 from kaitokid.helper.localization import use_chat_lang
-from kaitokid.helper.log_channel import send_log
+from kaitokid.log_channel import send_log
 from kaitokid.vars import COMMAND_HANDLER, SUDO, SUPPORT_CHAT
 
 LOGGER = getLogger("KaitoKid")
