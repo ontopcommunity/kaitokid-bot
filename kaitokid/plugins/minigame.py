@@ -376,7 +376,7 @@ async def bc_cmd(client, message: Message):
         return
     bal, _ = await _ensure_playable(uid)
     key = (message.chat.id, uid)
-    BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": None}
+    BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": None, "start_bal": bal}
     sent = await message.reply_text(
         _bc_text(uid, {}, BC_CHIPS[0], bal),
         reply_markup=_bc_kb(uid, {}, BC_CHIPS[0]),
@@ -458,7 +458,7 @@ async def bc_callback(client, query: CallbackQuery):
                 detail.append(f"{label}: ra {c} lần → +{_fmt(back - b)}")
             else:
                 detail.append(f"{label}: không ra → -{_fmt(b)}")
-        old = await game_db.get_balance(uid)
+        old = sess.get("start_bal", await game_db.get_balance(uid))
         new = await game_db.add_balance(uid, total_back)
         net = total_back - total_bet
         faces = " ".join(BC_EMOJI[k] for k in dice)
@@ -814,7 +814,7 @@ async def menu_callback(client, query: CallbackQuery):
         await query.edit_message_text(_tx_help_text(bal), reply_markup=_tx_kb(uid, "choice"))
     elif action == "bc":
         key = (query.message.chat.id, uid)
-        BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": query.message.id}
+        BC_SESSIONS[key] = {"bets": {}, "chip": BC_CHIPS[0], "msg_id": query.message.id, "start_bal": bal}
         await query.edit_message_text(
             _bc_text(uid, {}, BC_CHIPS[0], bal),
             reply_markup=_bc_kb(uid, {}, BC_CHIPS[0]),
