@@ -629,7 +629,9 @@ async def kang_sticker(self: Client, ctx: Message, strings):
             )
         else:
             await prog_msg.edit_msg(strings("new_packs"))
-            stkr_title = f"{ctx.from_user.first_name}'s "
+            # Tên người/kênh gửi (kênh không có first_name riêng).
+            _, sender_name = get_sender(ctx)
+            stkr_title = f"{sender_name or 'KaitoKid'}'s "
             if animated:
                 stkr_title += "AnimPack"
             elif videos:
