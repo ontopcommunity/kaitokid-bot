@@ -482,7 +482,12 @@ async def kang_sticker(self: Client, ctx: Message, strings):
     videos = False
     convert = False
     reply = ctx.reply_to_message
-    user = await self.resolve_peer(sender_username or sender_id)
+    # Chủ pack sticker phải là user/bot, không được là kênh — kênh thì pack
+    # đứng tên bot (tên pack vẫn theo id kênh nên mỗi kênh 1 pack riêng).
+    if sender_id < 0:
+        user = await self.resolve_peer(self.me.username or self.me.id)
+    else:
+        user = await self.resolve_peer(sender_username or sender_id)
 
     if reply and reply.media:
         if reply.photo:
