@@ -1,6 +1,7 @@
 {
-    "no_url": "Vui lòng cung cấp một URL để chụp ảnh màn hình.",
+    "no_url": "<blockquote expandable>📸 <b>CHỤP ẢNH MÀN HÌNH</b>\n❌ Chưa có link để chụp.\nLệnh này chỉ nhận link hoặc tên miền website.\nDùng: <code>/webss google.com</code> hoặc <code>/webss https://google.com</code></blockquote>",
     "wait_str": "Đang chụp ảnh màn hình...",
     "str_credit": "🌞 Ảnh màn hình được tạo bằng Puppeteer",
-    "ss_failed_str": "Không thể chụp ảnh màn hình. {err}"
+    "ss_failed_str": "<blockquote expandable>📸 <b>CHỤP ẢNH MÀN HÌNH</b>\n❌ Không chụp được: <code>{url}</code>\nTrang có thể không truy cập được hoặc chặn chụp ảnh.\nThử lại với link khác.</blockquote>",
+    "bad_url": "<blockquote expandable>📸 <b>CHỤP ẢNH MÀN HÌNH</b>\n❌ Link không hợp lệ: <code>{url}</code>\nLệnh này chỉ nhận link hoặc tên miền website.\nDùng: <code>/webss google.com</code> hoặc <code>/webss https://google.com</code></blockquote>"
 }
