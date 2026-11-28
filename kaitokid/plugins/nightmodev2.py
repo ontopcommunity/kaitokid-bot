@@ -23,7 +23,8 @@ from kaitokid import BOT_NAME, app, scheduler
 from kaitokid.core.decorator import permissions
 from kaitokid.core.decorator.permissions import require_admin
 from kaitokid.helper.localization import langdict, use_chat_lang
-from kaitokid.vars import COMMAND_HANDLER, LOG_CHANNEL, TZ
+from kaitokid.helper.log_channel import send_log
+from kaitokid.vars import COMMAND_HANDLER, TZ
 
 LOGGER = getLogger("KaitoKid")
 
@@ -109,8 +110,8 @@ async def un_mute_chat(chat_id: int, perm: ChatPermissions):
     except AttributeError:
         await app.set_chat_permissions(chat_id, ChatPermissions(all_perms=True))
     except ChatAdminRequired:
-        await app.send_message(
-            LOG_CHANNEL,
+        send_log(
+            app,
             langdict[getlang]["nightmodev2"]["nmd_off_not_admin"].format(
                 chat_id=chat_id, bname=BOT_NAME
             ),
@@ -118,8 +119,8 @@ async def un_mute_chat(chat_id: int, perm: ChatPermissions):
     except (ChannelInvalid, ChannelPrivate, PeerIdInvalid):
         scheduler.remove_job(f"enable_nightmode_{chat_id}")
         scheduler.remove_job(f"disable_nightmode_{chat_id}")
-        await app.send_message(
-            LOG_CHANNEL,
+        send_log(
+            app,
             langdict[getlang]["nightmodev2"]["nmd_off_not_present"].format(
                 chat_id=chat_id, bname=BOT_NAME
             ),
@@ -127,8 +128,8 @@ async def un_mute_chat(chat_id: int, perm: ChatPermissions):
     except ChatNotModified:
         pass
     except Exception as e:
-        await app.send_message(
-            LOG_CHANNEL,
+        send_log(
+            app,
             langdict[getlang]["nightmodev2"]["nmd_off_err"].format(
                 chat_id=chat_id, e=e
             ),
@@ -155,8 +156,8 @@ async def mute_chat(chat_id: int):
     try:
         await app.set_chat_permissions(chat_id, ChatPermissions(all_perms=False))
     except ChatAdminRequired:
-        await app.send_message(
-            LOG_CHANNEL,
+        send_log(
+            app,
             langdict[getlang]["nightmodev2"]["nmd_on_not_admin"].format(
                 chat_id=chat_id, bname=BOT_NAME
             ),
@@ -164,8 +165,8 @@ async def mute_chat(chat_id: int):
     except (ChannelInvalid, ChannelPrivate, PeerIdInvalid):
         scheduler.remove_job(f"enable_nightmode_{chat_id}")
         scheduler.remove_job(f"disable_nightmode_{chat_id}")
-        await app.send_message(
-            LOG_CHANNEL,
+        send_log(
+            app,
             langdict[getlang]["nightmodev2"]["nmd_on_not_present"].format(
                 chat_id=chat_id, bname=BOT_NAME
             ),
@@ -173,8 +174,8 @@ async def mute_chat(chat_id: int):
     except ChatNotModified:
         pass
     except Exception as e:
-        await app.send_message(
-            LOG_CHANNEL,
+        send_log(
+            app,
             langdict[getlang]["nightmodev2"]["nmd_on_err"].format(chat_id=chat_id, e=e),
         )
     else:
