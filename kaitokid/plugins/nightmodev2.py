@@ -23,7 +23,7 @@ from kaitokid import BOT_NAME, app, scheduler
 from kaitokid.core.decorator import permissions
 from kaitokid.core.decorator.permissions import require_admin
 from kaitokid.helper.localization import langdict, use_chat_lang
-from kaitokid.helper.log_channel import send_log
+from kaitokid.log_channel import send_log
 from kaitokid.vars import COMMAND_HANDLER, TZ
 
 LOGGER = getLogger("KaitoKid")
