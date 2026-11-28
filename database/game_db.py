@@ -6,6 +6,7 @@ Mỗi người chơi lần đầu được cấp 500.000. Số dư lưu theo use
 from database import execute, fetch, fetchrow, fetchval
 
 START_BALANCE = 500000
+MAX_BALANCE = 10**15  # Trần số dư (chủ bot hiển thị "Vô hạn", chống tràn BIGINT).
 
 
 async def ensure_user(user_id: int) -> int:
@@ -32,10 +33,11 @@ async def add_balance(user_id: int, delta: int) -> int:
     """Cộng/trừ số dư (atomic), trả về số dư mới."""
     await ensure_user(user_id)
     row = await fetchrow(
-        "UPDATE kk_game_balance SET balance = balance + $2, "
+        "UPDATE kk_game_balance SET balance = LEAST(GREATEST(balance + $2, 0), $3), "
         "updated_at = now() WHERE user_id = $1 RETURNING balance",
         user_id,
         delta,
+        MAX_BALANCE,
     )
     return row["balance"]
 
@@ -60,10 +62,11 @@ async def transfer(sender_id: int, receiver_id: int, amount: int):
         amount,
     )
     receiver_bal = await fetchval(
-        "UPDATE kk_game_balance SET balance = balance + $2, "
+        "UPDATE kk_game_balance SET balance = LEAST(balance + $2, $3), "
         "updated_at = now() WHERE user_id = $1 RETURNING balance",
         receiver_id,
         amount,
+        MAX_BALANCE,
     )
     sender_new = sender_bal - amount
     return True, "", sender_new, receiver_bal
