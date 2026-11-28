@@ -886,11 +886,21 @@ async def mentionall(app: Client, msg: Message):
     sender_id, _ = get_sender(msg)
     if sender_id is None:
         return
-    user = await msg.chat.get_member(sender_id)
-    if user.status in (
-        enums.ChatMemberStatus.OWNER,
-        enums.ChatMemberStatus.ADMINISTRATOR,
-    ):
+    # Kênh không lấy được tư cách thành viên qua get_member (USER_NOT_PARTICIPANT)
+    # dù vẫn đăng được trong nhóm — người đăng bằng kênh mặc định đã là admin kênh.
+    is_admin = False
+    if sender_id < 0:
+        is_admin = True
+    else:
+        try:
+            user = await msg.chat.get_member(sender_id)
+            is_admin = user.status in (
+                enums.ChatMemberStatus.OWNER,
+                enums.ChatMemberStatus.ADMINISTRATOR,
+            )
+        except Exception:
+            return
+    if is_admin:
         total = []
         async for member in app.get_chat_members(msg.chat.id):
             member: ChatMember
