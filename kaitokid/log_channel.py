@@ -53,6 +53,21 @@ def log_block(title: str, lines: list[str]) -> str:
     )
 
 
+def log_error_block(title: str, lines: list[str], code: str) -> str:
+    """Log lỗi: blockquote thông tin + khối mã nguồn (bash) cho traceback.
+
+    Dùng cho log lỗi gửi về kênh: phần thông tin gọn trong trích dẫn,
+    đoạn mã lỗi hiện dạng khối code để đọc cho dễ.
+    """
+    import html as _html
+
+    info = log_block(title, lines)
+    code = _html.escape(code.strip())
+    if not code:
+        return info
+    return f"{info}\n<pre language=\"bash\">{code}</pre>"
+
+
 async def _delete_later(client, chat_id: int, msg_id: int, delay: int) -> None:
     await asyncio.sleep(delay)
     try:
